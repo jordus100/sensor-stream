@@ -1,4 +1,4 @@
-package com.example.test;
+package com.example.sensorstream;
 
 import org.junit.Test;
 
