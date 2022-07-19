@@ -18,16 +18,21 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
 
 const val SENSOR_READ_INTERVAL : Long = 0
 
-data class sensorsData(var gyroVals : Array<Double>, var accelVals : Array<Double>)
+data class sensorsData(var gyroVals : Array<Float>, var accelVals : Array<Float>)
 
 class SensorsReadouts : AppCompatActivity(), SensorEventListener {
 
+    private lateinit var sensorManager: SensorManager
+    private var accelSensor: Sensor? = null
+    private var gyroSensor: Sensor? = null
+    private var sensorsData  = sensorsData(arrayOf(0.0f, 0.0f, 0.0f), arrayOf(0.0f, 0.0f, 0.0f))
     private lateinit var binding: SensorsReadoutsBinding
-    private val model: SensorsReadoutsVM by viewModels()
-    private lateinit var sensorsDataSource : SensorsDataSource
+//    private val model: SensorsReadoutsVM by viewModels()
+//    private lateinit var sensorsDataSource : SensorsDataSource
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -35,41 +40,69 @@ class SensorsReadouts : AppCompatActivity(), SensorEventListener {
         binding = SensorsReadoutsBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
-        val sensorsDataObserver = Observer<sensorsData> { sensorsData ->
+        /*val sensorsDataObserver = Observer<sensorsData> { sensorsData ->
             updateSensorsValues(sensorsData)
         }
-        model.sensorsDataLive.observe(this, sensorsDataObserver)
+        model.sensorsDataLive.observe(this, sensorsDataObserver)*/
     }
 
     override fun onStart() {
         super.onStart()
-        val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val accelSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        val gyroSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-        SensorsDataSource.accelSensor = accelSensor
-        SensorsDataSource.gyroSensor = gyroSensor
+        println("START")
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+        /*SensorsDataSource.accelSensor = accelSensor
+        SensorsDataSource.gyroSensor = gyroSensor*/
+        sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, accelSensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
-    fun updateSensorsValues(sensorsData : sensorsData) {
-        binding.gyroX.text = sensorsData.gyroVals[0].toString();
-        binding.gyroY.text = sensorsData.gyroVals[1].toString();
-        binding.gyroZ.text = sensorsData.gyroVals[2].toString();
+    private fun updateSensorsValues(sensorsData : sensorsData) {
 
-        binding.accelX.text = sensorsData.accelVals[0].toString();
-        binding.accelY.text = sensorsData.accelVals[1].toString();
-        binding.accelZ.text = sensorsData.accelVals[2].toString();
+        val df = DecimalFormat("0")
+        df.maximumFractionDigits = 6
+        binding.gyroX.text = df.format(sensorsData.gyroVals[0]).toString();
+        binding.gyroY.text = df.format(sensorsData.gyroVals[1]).toString();
+        binding.gyroZ.text = df.format(sensorsData.gyroVals[2]).toString();
+
+        binding.accelX.text = df.format(sensorsData.accelVals[0]).toString();
+        binding.accelY.text = df.format(sensorsData.accelVals[1]).toString();
+        binding.accelZ.text = df.format(sensorsData.accelVals[2]).toString();
     }
 
+    override fun onSensorChanged(event: SensorEvent?) {
+        println("SENSOR CHANGED")
+        var values : FloatArray
+        if(event?.values != null) {
+            values = (event?.values!!)
+        }
+        else return
+        when(event?.sensor?.type){
+            Sensor.TYPE_GYROSCOPE -> run {
+                sensorsData.gyroVals = values.toList().toTypedArray()
+            }
+            Sensor.TYPE_ACCELEROMETER -> run {
+                sensorsData.accelVals = values.toList().toTypedArray()
+            }
+            null -> println("null")
+            else -> println("cos innego")
+        }
+        updateSensorsValues(sensorsData)
+    }
 
+    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
+
+    }
 }
-
+/*
 class SensorsReadoutsVM () : ViewModel() {
     private val sensorsDataSource: SensorsDataSource = SensorsDataSource
     var sensorsData = sensorsData(arrayOf(0.0, 0.0, 0.0), arrayOf(0.0, 0.0, 0.0))
     val sensorsDataLive: MutableLiveData<sensorsData> by lazy {
         MutableLiveData<sensorsData>()
     }
-
+    *//*
     init {
         viewModelScope.launch {
             sensorsDataSource.sensorsRead.collect { sensorsRead : sensorsData ->
@@ -78,11 +111,13 @@ class SensorsReadoutsVM () : ViewModel() {
             }
         }
     }
-}
+    *//*
+}*/
+/*
 
-object SensorsDataSource {
-    var accelSensor : Sensor? = null
-    var gyroSensor : Sensor? = null
+class SensorsDataSource() : SensorEventListener{
+
+
 
     val sensorsRead: Flow<sensorsData> = flow {
         while(true) {
@@ -92,8 +127,7 @@ object SensorsDataSource {
                 delay(SENSOR_READ_INTERVAL) // Suspends the coroutine for some time
             }
         }
-    }
-    private fun getSensorsData() : sensorsData{
-        return sensorsData(arrayOf(0.0, 0.0, 0.0), arrayOf(0.0, 0.0, 0.0))
-    }
-}
+
+
+
+}*/
