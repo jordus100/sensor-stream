@@ -6,9 +6,10 @@
     android:layout_height="match_parent">
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/startButton"
         android:layout_width="185dp"
         android:layout_height="111dp"
+        android:onClick="onStartBtnClicked"
         android:text="START"
         android:textSize="34sp"
         app:layout_constraintBottom_toBottomOf="parent"
