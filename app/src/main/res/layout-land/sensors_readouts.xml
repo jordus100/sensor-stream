@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:flow_maxElementsWrap="1"
+    app:flow_wrapMode="none"
+    app:layout_wrapBehaviorInParent="skipped">
+
+    <TextView
+        android:id="@+id/accelZ"
+        android:layout_width="117dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:text="Z:"
+        app:layout_constraintEnd_toEndOf="@+id/textView7"
+        app:layout_constraintStart_toStartOf="@+id/textView7"
+        app:layout_constraintTop_toBottomOf="@+id/accelY" />
+
+    <TextView
+        android:id="@+id/gyroX"
+        android:layout_width="117dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:text="X:"
+        app:layout_constraintEnd_toEndOf="@+id/textView"
+        app:layout_constraintStart_toStartOf="@+id/textView"
+        app:layout_constraintTop_toBottomOf="@+id/textView" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="272dp"
+        android:layout_height="37dp"
+        android:layout_marginEnd="16dp"
+        android:gravity="center"
+        android:text="Accelerometer"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toBottomOf="@+id/textView7"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/textView7"
+        app:layout_constraintTop_toTopOf="@+id/textView7" />
+
+    <TextView
+        android:id="@+id/textView7"
+        android:layout_width="315dp"
+        android:layout_height="38dp"
+        android:layout_marginStart="16dp"
+        android:gravity="center"
+        android:text="Gyroscope"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/textView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.39" />
+
+    <TextView
+        android:id="@+id/gyroY"
+        android:layout_width="117dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:text="Y:"
+        app:layout_constraintEnd_toEndOf="@+id/textView"
+        app:layout_constraintStart_toStartOf="@+id/textView"
+        app:layout_constraintTop_toBottomOf="@+id/gyroX" />
+
+    <TextView
+        android:id="@+id/gyroZ"
+        android:layout_width="117dp"
+        android:layout_height="36dp"
+        android:gravity="center"
+        android:text="Z:"
+        app:layout_constraintBottom_toBottomOf="@+id/accelZ"
+        app:layout_constraintEnd_toEndOf="@+id/textView"
+        app:layout_constraintStart_toStartOf="@+id/textView"
+        app:layout_constraintTop_toBottomOf="@+id/gyroY" />
+
+    <TextView
+        android:id="@+id/accelX"
+        android:layout_width="120dp"
+        android:layout_height="38dp"
+        android:gravity="center"
+        android:text="X:"
+        app:layout_constraintEnd_toEndOf="@+id/textView7"
+        app:layout_constraintStart_toStartOf="@+id/textView7"
+        app:layout_constraintTop_toBottomOf="@+id/textView7" />
+
+    <TextView
+        android:id="@+id/accelY"
+        android:layout_width="118dp"
+        android:layout_height="35dp"
+        android:gravity="center"
+        android:text="Y:"
+        app:layout_constraintEnd_toEndOf="@+id/textView7"
+        app:layout_constraintStart_toStartOf="@+id/textView7"
+        app:layout_constraintTop_toBottomOf="@+id/accelX" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

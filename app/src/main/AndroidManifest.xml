@@ -7,7 +7,8 @@
         <activity
             android:name=".SensorsReadouts"
             android:exported="false"
-            android:theme="@style/Theme.Test"/>
+            android:theme="@style/Theme.Test"
+            android:configChanges="orientation"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
