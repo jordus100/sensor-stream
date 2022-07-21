@@ -9,31 +9,42 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import io.ktor.client.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.http.*
+import io.ktor.websocket.*
+import io.ktor.util.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.conflate
 
 const val SENSOR_READ_DELAY : Long = 1
 
 class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel() {
-    private var sensorsData = SensorsData()
-    private val sensorsDataSource = SensorsDataSource(sensorManager)
+    val sensorDataFlow = MutableStateFlow<SensorsData>(SensorsData())
+    private val sensorsDataSource = SensorsDataSource(sensorDataFlow, sensorManager)
+    private val dataSender = SocketDataSender(sensorDataFlow, "echo.websocket.events", 80, 1)
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
     init {
         viewModelScope.launch {
-            sensorsDataSource.sensorsRead.collect { sensorsRead : SensorsData ->
-                sensorsData = sensorsRead
-                sensorsDataLive.value = sensorsData
+            sensorDataFlow.collect { sensorsRead : SensorsData ->
+                sensorsDataLive.value = sensorsRead
+                delay(SENSOR_READ_DELAY)
             }
+        }
+        viewModelScope.launch{
+            dataSender.sendData()
         }
     }
 }
 
-class SensorsDataSource (private val sensorManager: SensorManager): DefaultLifecycleObserver,
+class SensorsDataSource (val sensorDataFlow : MutableStateFlow<SensorsData>, private val sensorManager: SensorManager) :
     SensorEventListener {
 
     private var accelSensor: Sensor? = null
     private var gyroSensor: Sensor? = null
-    private var sensorsData = SensorsData()
 
     init {
         accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -50,10 +61,10 @@ class SensorsDataSource (private val sensorManager: SensorManager): DefaultLifec
         else return
         when(event.sensor?.type){
             Sensor.TYPE_GYROSCOPE -> run {
-                sensorsData.gyroVals = values.toList().toTypedArray()
+                sensorDataFlow.value = SensorsData(gyroVals = values.toList().toTypedArray(), accelVals = sensorDataFlow.value.accelVals)
             }
             Sensor.TYPE_ACCELEROMETER -> run {
-                sensorsData.accelVals = values.toList().toTypedArray()
+                sensorDataFlow.value = SensorsData(gyroVals = sensorDataFlow.value.gyroVals, accelVals = values.toList().toTypedArray())
             }
             null -> println("null")
             else -> println("cos innego")
@@ -64,12 +75,28 @@ class SensorsDataSource (private val sensorManager: SensorManager): DefaultLifec
         return
     }
 
-    val sensorsRead: Flow<SensorsData> = flow {
-        while (true) {
-            if (accelSensor != null && gyroSensor != null) {
-                emit(sensorsData)
+}
+
+class SocketDataSender (val sensorDataFlow: MutableStateFlow<SensorsData>, var host : String, var port : Int, var delay : Long){
+    val client = HttpClient {
+        install(WebSockets)
+    }
+    suspend fun sendData() {
+        client.webSocket(method = HttpMethod.Get, host = host, port = port, path = "") {
+            println("websocket")
+            var socket : DefaultClientWebSocketSession = this
+            launch{receiveData(socket)}
+            sensorDataFlow.collect { sensorsRead: SensorsData ->
+                val myMessage = sensorsRead.accelVals[2].toString()
+                send(myMessage)
             }
-            delay(SENSOR_READ_DELAY)
+        }
+    }
+    suspend fun receiveData(socket : DefaultWebSocketSession){
+        while(true) {
+            val incoming = socket.incoming.receive() as? Frame.Text
+            println(incoming?.readText())
+            delay(10)
         }
     }
 }

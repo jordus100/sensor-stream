@@ -11,7 +11,24 @@ import com.example.sensorstream.databinding.SensorsReadoutsPorBinding
 import java.text.DecimalFormat
 
 
-data class SensorsData(var gyroVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f), var accelVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f))
+data class SensorsData(var gyroVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f), var accelVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f)) {
+    override fun equals(other: Any?): Boolean {
+        if (javaClass != other?.javaClass) return false
+
+        other as SensorsData
+
+        if (!gyroVals.contentEquals(other.gyroVals)) return false
+        if (!accelVals.contentEquals(other.accelVals)) return false
+        println("WTF")
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = gyroVals.contentHashCode()
+        result = 31 * result + accelVals.contentHashCode()
+        return result
+    }
+}
 
 class SensorsReadouts : AppCompatActivity() {
 
