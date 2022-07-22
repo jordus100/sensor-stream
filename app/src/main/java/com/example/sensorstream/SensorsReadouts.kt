@@ -31,7 +31,6 @@ data class SensorsData(var gyroVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f), 
 }
 
 class SensorsReadouts : AppCompatActivity() {
-
     private lateinit var sensorsViewModel: SensorsReadoutsVM
     private lateinit var sensorManager: SensorManager
     private var accelValsText: Array<TextView?> = arrayOfNulls(3)

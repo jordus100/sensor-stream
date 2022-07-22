@@ -6,32 +6,28 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.lifecycle.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.websocket.*
-import io.ktor.util.*
-import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.sample
 
 const val SENSOR_READ_DELAY : Long = 1
 
 class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel() {
-    val sensorDataFlow = MutableStateFlow<SensorsData>(SensorsData())
-    private val sensorsDataSource = SensorsDataSource(sensorDataFlow, sensorManager)
-    private val dataSender = SocketDataSender(sensorDataFlow, "echo.websocket.events", 80, 1)
+    val websocketServerUrl = BuildConfig.WEBSOCKET_SERVER
+    val websocketServerPort = BuildConfig.WEBSOCKET_SERVER_PORT
+    private val sensorsDataSource : SensorsDataSource = SensorsDataSourceImpl(sensorManager)
+    private val dataSender = SocketDataSender(sensorsDataSource.sensorDataFlow, websocketServerUrl, websocketServerPort, 1)
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
     init {
         viewModelScope.launch {
-            sensorDataFlow.collect { sensorsRead : SensorsData ->
+            sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect { sensorsRead : SensorsData ->
                 sensorsDataLive.value = sensorsRead
-                delay(SENSOR_READ_DELAY)
             }
         }
         viewModelScope.launch{
@@ -39,10 +35,13 @@ class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel() {
         }
     }
 }
-
-class SensorsDataSource (val sensorDataFlow : MutableStateFlow<SensorsData>, private val sensorManager: SensorManager) :
-    SensorEventListener {
-
+interface SensorsDataSource {
+    val sensorDataFlow : MutableStateFlow<SensorsData>
+}
+class SensorsDataSourceImpl(private val sensorManager: SensorManager) :
+    SensorsDataSource, SensorEventListener {
+    override var sensorDataFlow = MutableStateFlow<SensorsData>(SensorsData())
+        private set
     private var accelSensor: Sensor? = null
     private var gyroSensor: Sensor? = null
 
@@ -82,21 +81,34 @@ class SocketDataSender (val sensorDataFlow: MutableStateFlow<SensorsData>, var h
         install(WebSockets)
     }
     suspend fun sendData() {
-        client.webSocket(method = HttpMethod.Get, host = host, port = port, path = "") {
-            println("websocket")
-            var socket : DefaultClientWebSocketSession = this
-            launch{receiveData(socket)}
-            sensorDataFlow.collect { sensorsRead: SensorsData ->
-                val myMessage = sensorsRead.accelVals[2].toString()
-                send(myMessage)
+        while(true) {
+            try {
+                client.webSocket(method = HttpMethod.Get, host = host, port = port, path = "") {
+                    this.let {
+                        launch { receiveData(it) }
+                    }
+                    sensorDataFlow.sample(delay).collect { sensorsRead: SensorsData ->
+                        val myMessage = sensorsRead.format()
+                        println("OUTGOING: " + myMessage)
+                        send(myMessage)
+                    }
+                }
+            } catch (e : Exception) {
+
             }
         }
     }
-    suspend fun receiveData(socket : DefaultWebSocketSession){
-        while(true) {
+    suspend fun receiveData(socket: DefaultWebSocketSession) {
+        while (true) {
             val incoming = socket.incoming.receive() as? Frame.Text
-            println(incoming?.readText())
-            delay(10)
+            println("INCOMING: " + incoming?.readText())
         }
     }
+}
+
+fun SensorsData.format() : String{
+    val prefix = "["; val postfix = "]"; val separator = " ; "
+    var data = accelVals.joinToString(separator, prefix, postfix)
+    data = data + " " + gyroVals.joinToString(separator, prefix, postfix)
+    return data
 }
