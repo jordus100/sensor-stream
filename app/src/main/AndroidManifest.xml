@@ -4,7 +4,7 @@
     package="com.example.sensorstream">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <application>
+    <application android:name=".SensorStreamApp">
         <activity
             android:name=".SensorsReadouts"
             android:exported="false"

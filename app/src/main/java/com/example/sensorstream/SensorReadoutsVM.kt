@@ -5,22 +5,20 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.lifecycle.*
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import io.ktor.client.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.http.*
-import io.ktor.websocket.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
+import org.koin.core.parameter.parametersOf
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 const val SENSOR_READ_DELAY : Long = 1
 
-class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel() {
+class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinComponent {
     val websocketServerUrl = BuildConfig.WEBSOCKET_SERVER
     val websocketServerPort = BuildConfig.WEBSOCKET_SERVER_PORT
-    private val sensorsDataSource : SensorsDataSource = SensorsDataSourceImpl(sensorManager)
-    private val dataSender = SocketDataSender(sensorsDataSource.sensorDataFlow, websocketServerUrl, websocketServerPort, 1)
+    private val sensorsDataSource : SensorsDataSource by inject { parametersOf(sensorManager)}
+    private val dataSender : DataSender by inject { parametersOf(websocketServerUrl, websocketServerPort, 1L) }
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
@@ -31,14 +29,16 @@ class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel() {
             }
         }
         viewModelScope.launch{
-            dataSender.sendData()
+            dataSender.sendData(sensorsDataSource.sensorDataFlow)
         }
     }
 }
+
 interface SensorsDataSource {
     val sensorDataFlow : MutableStateFlow<SensorsData>
 }
-class SensorsDataSourceImpl(private val sensorManager: SensorManager) :
+
+class SensorsDataSourceImpl(sensorManager: SensorManager) :
     SensorsDataSource, SensorEventListener {
     override var sensorDataFlow = MutableStateFlow<SensorsData>(SensorsData())
         private set
@@ -73,42 +73,5 @@ class SensorsDataSourceImpl(private val sensorManager: SensorManager) :
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
         return
     }
-
 }
 
-class SocketDataSender (val sensorDataFlow: MutableStateFlow<SensorsData>, var host : String, var port : Int, var delay : Long){
-    val client = HttpClient {
-        install(WebSockets)
-    }
-    suspend fun sendData() {
-        while(true) {
-            try {
-                client.webSocket(method = HttpMethod.Get, host = host, port = port, path = "") {
-                    this.let {
-                        launch { receiveData(it) }
-                    }
-                    sensorDataFlow.sample(delay).collect { sensorsRead: SensorsData ->
-                        val myMessage = sensorsRead.format()
-                        println("OUTGOING: " + myMessage)
-                        send(myMessage)
-                    }
-                }
-            } catch (e : Exception) {
-
-            }
-        }
-    }
-    suspend fun receiveData(socket: DefaultWebSocketSession) {
-        while (true) {
-            val incoming = socket.incoming.receive() as? Frame.Text
-            println("INCOMING: " + incoming?.readText())
-        }
-    }
-}
-
-fun SensorsData.format() : String{
-    val prefix = "["; val postfix = "]"; val separator = " ; "
-    var data = accelVals.joinToString(separator, prefix, postfix)
-    data = data + " " + gyroVals.joinToString(separator, prefix, postfix)
-    return data
-}

@@ -1,5 +1,7 @@
 package com.example.sensorstream
 
+import android.widget.TextView
+
 //const val SENSOR_READ_INTERVAL : Long = 0
 
 //    private val model: SensorsReadoutsVM by viewModels()
@@ -36,4 +38,14 @@ class SensorsDataSource() : SensorEventListener{
 
 
 
+}*/
+
+/*
+private fun configUIRefs() {
+    accelValsText[0] = findViewById<TextView>(R.id.accelX)
+    accelValsText[1] = findViewById<TextView>(R.id.accelY)
+    accelValsText[2] = findViewById<TextView>(R.id.accelZ)
+    gyroValsText[0] = findViewById<TextView>(R.id.gyroX)
+    gyroValsText[1] = findViewById<TextView>(R.id.gyroY)
+    gyroValsText[2] = findViewById<TextView>(R.id.gyroZ)
 }*/
