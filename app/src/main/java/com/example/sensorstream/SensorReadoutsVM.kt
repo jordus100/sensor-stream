@@ -14,14 +14,21 @@ import org.koin.core.component.inject
 
 const val SENSOR_READ_DELAY : Long = 1
 
+enum class CONNECTION {
+    ESTABLISHED, NOT_ESTABLISHED
+}
+
+const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_GAME
+
 class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinComponent {
     val websocketServerUrl = BuildConfig.WEBSOCKET_SERVER
     val websocketServerPort = BuildConfig.WEBSOCKET_SERVER_PORT
     private val sensorsDataSource : SensorsDataSource by inject { parametersOf(sensorManager)}
-    private val dataSender : DataSender by inject { parametersOf(websocketServerUrl, websocketServerPort, 1L) }
+    private val sensorDataSender : SensorDataSender by inject { parametersOf(websocketServerUrl, websocketServerPort, 1L, sensorsDataSource.sensorDataFlow) }
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
+    val connectionDataLive: MutableLiveData<CONNECTION> = sensorDataSender.connectionDataLive
     init {
         viewModelScope.launch {
             sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect { sensorsRead : SensorsData ->
@@ -29,7 +36,7 @@ class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinCompon
             }
         }
         viewModelScope.launch{
-            dataSender.sendData(sensorsDataSource.sensorDataFlow)
+            sensorDataSender.sendSensorData()
         }
     }
 }
@@ -48,8 +55,8 @@ class SensorsDataSourceImpl(sensorManager: SensorManager) :
     init {
         accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-        sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, accelSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, gyroSensor, SENSOR_DELAY)
+        sensorManager.registerListener(this, accelSensor, SENSOR_DELAY)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {

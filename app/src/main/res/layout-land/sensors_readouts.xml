@@ -9,6 +9,17 @@
     app:layout_wrapBehaviorInParent="skipped">
 
     <TextView
+        android:id="@+id/statusText"
+        android:layout_width="309dp"
+        android:layout_height="37dp"
+        android:layout_marginTop="64dp"
+        android:gravity="center"
+        android:text="Status : Not Connected"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
         android:id="@+id/accelZ"
         android:layout_width="117dp"
         android:layout_height="36dp"
