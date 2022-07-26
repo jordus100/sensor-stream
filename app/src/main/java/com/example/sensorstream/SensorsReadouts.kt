@@ -42,7 +42,6 @@ class SensorsReadouts : AppCompatActivity(), KoinComponent {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
         uiBinding = SensorsReadoutsBinding.inflate(layoutInflater)
         setContentView(uiBinding.root)
@@ -68,8 +67,8 @@ class SensorsReadouts : AppCompatActivity(), KoinComponent {
     }
     private fun updateConnectionStatusUI(connection : CONNECTION){
         when(connection){
-            CONNECTION.ESTABLISHED -> uiBinding.statusText.text = "Connection Established"
-            CONNECTION.NOT_ESTABLISHED -> uiBinding.statusText.text = "Connection Not Established"
+            CONNECTION.ESTABLISHED -> uiBinding.statusText.text = getString(R.string.connection_good)
+            CONNECTION.NOT_ESTABLISHED -> uiBinding.statusText.text = getString(R.string.connection_bad)
         }
     }
 

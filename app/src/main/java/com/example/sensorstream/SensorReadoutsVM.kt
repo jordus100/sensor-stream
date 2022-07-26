@@ -18,7 +18,7 @@ enum class CONNECTION {
     ESTABLISHED, NOT_ESTABLISHED
 }
 
-const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_GAME
+const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
 
 class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinComponent {
     val websocketServerUrl = BuildConfig.WEBSOCKET_SERVER
@@ -28,11 +28,16 @@ class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinCompon
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
-    val connectionDataLive: MutableLiveData<CONNECTION> = sensorDataSender.connectionDataLive
+    val connectionDataLive = MutableLiveData<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
     init {
         viewModelScope.launch {
             sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect { sensorsRead : SensorsData ->
                 sensorsDataLive.value = sensorsRead
+            }
+        }
+        viewModelScope.launch {
+            sensorDataSender.connectionStateFlow.collect { connectionStatus ->
+                connectionDataLive.value = connectionStatus
             }
         }
         viewModelScope.launch{
