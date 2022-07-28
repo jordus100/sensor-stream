@@ -11,6 +11,7 @@ import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.koin.test.get
 import kotlinx.coroutines.test.runTest
+import org.junit.Before
 import kotlin.test.assertEquals
 
 const val WEBSOCKET_SERVER_URL = "echo.websocket.events"
@@ -22,19 +23,32 @@ class SensorDataSenderTest : KoinTest {
         get<SensorDataSender> { parametersOf(WEBSOCKET_SERVER_URL, WEBSOCKET_SERVER_PORT, 1L, testSensorLiveData) }
     }
 
-    fun startKoinTest() {
+    @Before
+    fun setUp() {
         startKoin{
             modules(appModule)
         }
     }
 
+
     @Test fun socketConnectionTest(){
-        startKoinTest()
         runBlocking {
             val connectionJob = launch {sensorDataSender.sendSensorData() }
-            delay(2000)
+            delay(5000)
             connectionJob.cancelAndJoin()
             assertEquals(CONNECTION.ESTABLISHED, sensorDataSender.connectionStateFlow.value)
+        }
+    }
+
+    @Test fun socketConnectionControlTest(){
+        runBlocking {
+            val connectionJob = launch {sensorDataSender.sendSensorData() }
+            delay(3000)
+            assertEquals(CONNECTION.ESTABLISHED, sensorDataSender.connectionStateFlow.value)
+            sensorDataSender.stopSendingData()
+            delay(1000)
+            assertEquals(CONNECTION.NOT_ESTABLISHED, sensorDataSender.connectionStateFlow.value)
+            connectionJob.cancelAndJoin()
         }
     }
 
