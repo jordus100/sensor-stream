@@ -17,6 +17,7 @@ interface SensorDataSender {
     var sendingData : Boolean
     suspend fun sendSensorData()
     fun stopSendingData()
+    fun resumeSendingData()
 }
 
 fun SensorsData.format() : String{
@@ -33,6 +34,9 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
 
     override fun stopSendingData() {
         sendingData = false
+    }
+    override fun resumeSendingData(){
+        sendingData = true
     }
     override val connectionStateFlow: MutableStateFlow<CONNECTION> =
         MutableStateFlow<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
