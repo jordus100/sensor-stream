@@ -52,9 +52,6 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
             launch { receiveJob.join(); sendJob.join() }
         }
     }
-    val handler = CoroutineExceptionHandler { _, e ->
-
-    }
     override suspend fun sendSensorData() {
         sendingData = true
         while (true) {
@@ -74,6 +71,9 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
                     port,
                     path = ""
                 )
+            val handler = CoroutineExceptionHandler { _, e ->
+                throw e
+            }
             val websocketJob = CoroutineScope(Dispatchers.Default).launch(handler) {
                 handleConnection(websocketConnection)
             }
