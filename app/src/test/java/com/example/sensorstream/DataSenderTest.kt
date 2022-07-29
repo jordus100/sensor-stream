@@ -10,7 +10,6 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.koin.test.get
-import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import kotlin.test.assertEquals
 

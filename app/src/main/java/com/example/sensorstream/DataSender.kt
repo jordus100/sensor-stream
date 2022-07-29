@@ -9,6 +9,7 @@ import kotlinx.coroutines.NonCancellable.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
 import java.time.LocalDateTime
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
 interface SensorDataSender {
@@ -71,8 +72,8 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
                     port,
                     path = ""
                 )
-            val handler = CoroutineExceptionHandler { _, e ->
-                throw e
+            val handler = CoroutineExceptionHandler { context, e ->
+                //nothing, just don't crash
             }
             val websocketJob = CoroutineScope(Dispatchers.Default).launch(handler) {
                 handleConnection(websocketConnection)
@@ -85,7 +86,7 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
         } catch (e: Throwable) {
             when (e) {
                 is CancellationException -> yield()
-                is InterruptedException -> connectionStateFlow.value = CONNECTION.NOT_ESTABLISHED
+                else -> connectionStateFlow.value = CONNECTION.NOT_ESTABLISHED
             }
         }
     }
