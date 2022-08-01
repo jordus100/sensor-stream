@@ -4,6 +4,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.view.MotionEvent
+import android.view.View
 import androidx.lifecycle.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,21 +19,30 @@ const val SENSOR_READ_DELAY : Long = 1
 enum class CONNECTION {
     ESTABLISHED, NOT_ESTABLISHED
 }
+enum class STREAM_MODE{
+    CONSTANT, ON_TOUCH
+}
 
 const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
 
-class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinComponent {
+class SensorsReadoutsVM (val sensorManager: SensorManager, var streamMode: STREAM_MODE) : ViewModel(), KoinComponent {
+
     val websocketServerUrl = BuildConfig.WEBSOCKET_SERVER
     val websocketServerPort = BuildConfig.WEBSOCKET_SERVER_PORT
     private val sensorsDataSource : SensorsDataSource by inject { parametersOf(sensorManager)}
-    private val sensorDataSender : SensorDataSender by inject { parametersOf(websocketServerUrl, websocketServerPort, 1L, sensorsDataSource.sensorDataFlow) }
+    private val sensorDataSender : SensorDataSender by inject { parametersOf(websocketServerUrl,
+        websocketServerPort, 1L, sensorsDataSource.sensorDataFlow) }
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
+
+    lateinit var event : MotionEvent
+
     val connectionDataLive = MutableLiveData<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
     init {
         viewModelScope.launch {
-            sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect { sensorsRead : SensorsData ->
+            sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect {
+                    sensorsRead : SensorsData ->
                 sensorsDataLive.value = sensorsRead
             }
         }
@@ -41,8 +52,31 @@ class SensorsReadoutsVM (sensorManager: SensorManager) : ViewModel(), KoinCompon
             }
         }
         viewModelScope.launch{
-            sensorDataSender.sendSensorData()
+            if(streamMode == STREAM_MODE.CONSTANT)
+                sensorDataSender.sendSensorData()
         }
+    }
+    fun onRootTouch(event : MotionEvent) : Boolean {
+        if (streamMode == STREAM_MODE.ON_TOUCH) {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (event.pointerCount == 1) {
+                        if(sensorDataSender.sendingData)
+                            sensorDataSender.resumeSendingData()
+                        else{
+                            viewModelScope.launch { sensorDataSender.sendSensorData() }
+                        }
+                        this.event = event
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    if(event.pointerCount == 1) {
+                        sensorDataSender.stopSendingData()
+                    }
+                }
+            }
+        }
+        return true
     }
 }
 
@@ -65,7 +99,7 @@ class SensorsDataSourceImpl(sensorManager: SensorManager) :
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        var values : FloatArray
+        val values : FloatArray
         if(event?.values != null) {
             values = (event.values!!)
         }

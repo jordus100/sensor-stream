@@ -3,6 +3,8 @@ package com.example.sensorstream
 import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.MotionEvent
+import android.view.View
 import androidx.lifecycle.*
 import com.example.sensorstream.databinding.SensorsReadoutsBinding
 import org.koin.android.ext.android.get
@@ -47,12 +49,29 @@ class SensorsReadouts : AppCompatActivity(), KoinComponent {
         setContentView(uiBinding.root)
     }
 
+    private fun setEventHandlers(){
+        uiBinding.root.setOnTouchListener { _, event ->
+            uiBinding.root.performClick()
+            sensorsViewModel.onRootTouch(event)
+        }
+    }
+
+    private fun retrieveIntentBundledData() : List<Comparable<*>>{
+        val extras = intent.extras
+        val retrievedData = arrayListOf<Comparable<*>>()
+        val constantStreamMode = ((extras?.get("streamMode") ?: STREAM_MODE.ON_TOUCH ) as STREAM_MODE)
+        retrievedData.add(constantStreamMode)
+        return retrievedData
+    }
+
     override fun onStart(){
         super.onStart()
+        val retrievedData = retrieveIntentBundledData()
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        sensorsViewModel = get { parametersOf(sensorManager) }
+        sensorsViewModel = get { parametersOf(sensorManager, retrievedData[0] as STREAM_MODE) }
         sensorsViewModel.sensorsDataLive.observe(this, sensorsDataObserver)
         sensorsViewModel.connectionDataLive.observe(this, connectionDataObserver)
+        setEventHandlers()
     }
 
     private fun updateSensorsUI(sensorsData: SensorsData) {

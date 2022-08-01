@@ -72,15 +72,20 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
                     port,
                     path = ""
                 )
-            val handler = CoroutineExceptionHandler { context, e ->
+            val handler = CoroutineExceptionHandler { _, e ->
                 //nothing, just don't crash
             }
             val websocketJob = CoroutineScope(Dispatchers.Default).launch(handler) {
                 handleConnection(websocketConnection)
             }
             while (true) {
-                if (!websocketJob.isActive || !sendingData)
+                if (!websocketJob.isActive)
                     throw InterruptedException()
+                if(!sendingData){
+                    websocketJob.cancelAndJoin()
+                    throw InterruptedException()
+                }
+
                 delay(100)
             }
         } catch (e: Throwable) {
@@ -96,7 +101,7 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
             launch {
                 dataFlow.sample(delay).collect { sensorsRead: SensorsData ->
                     val myMessage = sensorsRead.format()
-                    println("OUTGOING: " + myMessage)
+//                    println("OUTGOING: " + myMessage)
                     socket.send(myMessage)
                 }
             }
@@ -120,6 +125,6 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
         }
     }
     private fun handleIncoming( message : Frame.Text? ){
-        println("INCOMING: " + message?.readText())
+//        println("INCOMING: " + message?.readText())
     }
 }

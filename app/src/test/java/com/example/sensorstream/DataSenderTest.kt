@@ -5,16 +5,21 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Test
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.koin.test.get
 import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.runners.Parameterized
+import org.koin.core.context.GlobalContext.stopKoin
 import kotlin.test.assertEquals
 
 const val WEBSOCKET_SERVER_URL = "echo.websocket.events"
 const val WEBSOCKET_SERVER_PORT = 80
+
 
 class SensorDataSenderTest : KoinTest {
     val testSensorLiveData = MutableStateFlow(SensorsData())
@@ -22,11 +27,17 @@ class SensorDataSenderTest : KoinTest {
         get<SensorDataSender> { parametersOf(WEBSOCKET_SERVER_URL, WEBSOCKET_SERVER_PORT, 1L, testSensorLiveData) }
     }
 
+
     @Before
     fun setUp() {
-        startKoin{
+        startKoin {
             modules(appModule)
         }
+    }
+
+    @After
+    fun tearDown() {
+        stopKoin()
     }
 
 

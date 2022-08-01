@@ -18,7 +18,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <CheckBox
-        android:id="@+id/checkBox"
+        android:id="@+id/streamModeCheckBox"
         android:layout_width="328dp"
         android:layout_height="38dp"
         android:text="@string/data_sending_mode"
