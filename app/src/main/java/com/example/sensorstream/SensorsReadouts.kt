@@ -13,7 +13,8 @@ import org.koin.core.parameter.parametersOf
 import java.text.DecimalFormat
 
 
-data class SensorsData(var gyroVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f), var accelVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f)) {
+data class SensorsData(var gyroVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f),
+                       var accelVals : Array<Float> = arrayOf(0.0f, 0.0f, 0.0f)) {
     override fun equals(other: Any?): Boolean {
         if (javaClass != other?.javaClass) return false
 
@@ -42,7 +43,9 @@ class SensorsReadouts : AppCompatActivity(), KoinComponent {
     private val connectionDataObserver = Observer<CONNECTION> { connection ->
         updateConnectionStatusUI(connection)
     }
-
+    private val transmissionDataObserver = Observer<TRANSMISSION> { transmission ->
+        updateTransmissionStatusUI(transmission)
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         uiBinding = SensorsReadoutsBinding.inflate(layoutInflater)
@@ -71,6 +74,7 @@ class SensorsReadouts : AppCompatActivity(), KoinComponent {
         sensorsViewModel = get { parametersOf(sensorManager, retrievedData[0] as STREAM_MODE) }
         sensorsViewModel.sensorsDataLive.observe(this, sensorsDataObserver)
         sensorsViewModel.connectionDataLive.observe(this, connectionDataObserver)
+        sensorsViewModel.transmissionDataLive.observe(this, transmissionDataObserver)
         setEventHandlers()
     }
 
@@ -88,6 +92,12 @@ class SensorsReadouts : AppCompatActivity(), KoinComponent {
         when(connection){
             CONNECTION.ESTABLISHED -> uiBinding.statusText.text = getString(R.string.connection_good)
             CONNECTION.NOT_ESTABLISHED -> uiBinding.statusText.text = getString(R.string.connection_bad)
+        }
+    }
+    private fun updateTransmissionStatusUI(transmission : TRANSMISSION){
+        when(transmission){
+            TRANSMISSION.ON -> uiBinding.transmissionStatusText.text = getString(R.string.transmission_status_on)
+            TRANSMISSION.OFF -> uiBinding.transmissionStatusText.text = getString(R.string.transmission_status_off)
         }
     }
 

@@ -41,23 +41,24 @@ class SensorDataSenderTest : KoinTest {
     }
 
 
-    @Test fun socketConnectionTest(){
+    /*@Test fun socketConnectionTest(){
         runBlocking {
             val connectionJob = launch {sensorDataSender.sendSensorData() }
             delay(5000)
             connectionJob.cancelAndJoin()
             assertEquals(CONNECTION.ESTABLISHED, sensorDataSender.connectionStateFlow.value)
         }
-    }
+    }*/
 
     @Test fun socketConnectionControlTest(){
         runBlocking {
+            assertEquals(TRANSMISSION.OFF, sensorDataSender.transmissionStateFlow.value)
             val connectionJob = launch {sensorDataSender.sendSensorData() }
             delay(3000)
-            assertEquals(CONNECTION.ESTABLISHED, sensorDataSender.connectionStateFlow.value)
-            sensorDataSender.stopSendingData()
+            assertEquals(TRANSMISSION.ON, sensorDataSender.transmissionStateFlow.value)
+            sensorDataSender.pauseSendingData()
             delay(1000)
-            assertEquals(CONNECTION.NOT_ESTABLISHED, sensorDataSender.connectionStateFlow.value)
+            assertEquals(TRANSMISSION.OFF, sensorDataSender.transmissionStateFlow.value)
             connectionJob.cancelAndJoin()
         }
     }

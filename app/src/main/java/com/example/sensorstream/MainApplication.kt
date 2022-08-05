@@ -10,7 +10,7 @@ import org.koin.dsl.module
 val appModule = module {
     single<SensorsReadoutsVM> { params -> SensorsReadoutsVM (sensorManager = params.get(), streamMode = params.get()) }
     single<SensorsDataSource> { params -> SensorsDataSourceImpl(sensorManager = params.get()) }
-    single<SensorDataSender> { params -> SocketDataSender(host = params.get(), port = params.get(), delay = params.get(), dataFlow = params.get())}
+    single<SensorDataSender> { params -> SocketDataSender(host = params.get(), port = params.get(), delay = params.get(), dataFlow = params.get(), streamMode = params.get())}
 }
 
 class SensorStreamApp : Application(){

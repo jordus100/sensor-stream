@@ -5,7 +5,6 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.view.MotionEvent
-import android.view.View
 import androidx.lifecycle.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,26 +18,31 @@ const val SENSOR_READ_DELAY : Long = 1
 enum class CONNECTION {
     ESTABLISHED, NOT_ESTABLISHED
 }
+enum class TRANSMISSION {
+    ON, OFF
+}
 enum class STREAM_MODE{
     CONSTANT, ON_TOUCH
 }
 
 const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
 
-class SensorsReadoutsVM (val sensorManager: SensorManager, var streamMode: STREAM_MODE) : ViewModel(), KoinComponent {
+class SensorsReadoutsVM (val sensorManager: SensorManager, var streamMode: STREAM_MODE)
+    : ViewModel(), KoinComponent {
 
     val websocketServerUrl = BuildConfig.WEBSOCKET_SERVER
     val websocketServerPort = BuildConfig.WEBSOCKET_SERVER_PORT
     private val sensorsDataSource : SensorsDataSource by inject { parametersOf(sensorManager)}
     private val sensorDataSender : SensorDataSender by inject { parametersOf(websocketServerUrl,
-        websocketServerPort, 1L, sensorsDataSource.sensorDataFlow) }
+        websocketServerPort, 1000L, sensorsDataSource.sensorDataFlow, streamMode) }
     val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
         MutableLiveData<SensorsData>()
     }
-
+    val connectionDataLive = MutableLiveData<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
+    val transmissionDataLive = MutableLiveData<TRANSMISSION>(TRANSMISSION.OFF)
     lateinit var event : MotionEvent
 
-    val connectionDataLive = MutableLiveData<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
+
     init {
         viewModelScope.launch {
             sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect {
@@ -51,6 +55,11 @@ class SensorsReadoutsVM (val sensorManager: SensorManager, var streamMode: STREA
                 connectionDataLive.value = connectionStatus
             }
         }
+        viewModelScope.launch {
+            sensorDataSender.transmissionStateFlow.collect { transmissionStatus ->
+                transmissionDataLive.value = transmissionStatus
+            }
+        }
         viewModelScope.launch{
             if(streamMode == STREAM_MODE.CONSTANT)
                 sensorDataSender.sendSensorData()
@@ -61,17 +70,13 @@ class SensorsReadoutsVM (val sensorManager: SensorManager, var streamMode: STREA
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     if (event.pointerCount == 1) {
-                        if(sensorDataSender.sendingData)
-                            sensorDataSender.resumeSendingData()
-                        else{
-                            viewModelScope.launch { sensorDataSender.sendSensorData() }
-                        }
+                        sensorDataSender.sendSensorData()
                         this.event = event
                     }
                 }
                 MotionEvent.ACTION_UP -> {
                     if(event.pointerCount == 1) {
-                        sensorDataSender.stopSendingData()
+                        sensorDataSender.pauseSendingData()
                     }
                 }
             }
@@ -106,10 +111,12 @@ class SensorsDataSourceImpl(sensorManager: SensorManager) :
         else return
         when(event.sensor?.type){
             Sensor.TYPE_GYROSCOPE -> run {
-                sensorDataFlow.value = SensorsData(gyroVals = values.toList().toTypedArray(), accelVals = sensorDataFlow.value.accelVals)
+                sensorDataFlow.value = SensorsData(gyroVals = values.toList().toTypedArray(),
+                    accelVals = sensorDataFlow.value.accelVals)
             }
             Sensor.TYPE_ACCELEROMETER -> run {
-                sensorDataFlow.value = SensorsData(gyroVals = sensorDataFlow.value.gyroVals, accelVals = values.toList().toTypedArray())
+                sensorDataFlow.value = SensorsData(gyroVals = sensorDataFlow.value.gyroVals,
+                    accelVals = values.toList().toTypedArray())
             }
             null -> println("null")
             else -> println("cos innego")

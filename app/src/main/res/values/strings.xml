@@ -3,5 +3,7 @@
     <string name="connection_good">CONNECTION ESTABLISHED</string>
     <string name="connection_bad">CONNECTION NOT ESTABLISHED</string>
     <string name="data_sending_mode">Check to enable constant data streaming mode without having to
-    hold a button</string>
+    hold down a finger</string>
+    <string name="transmission_status_on">TRANSMISSION ACTIVE</string>
+    <string name="transmission_status_off">TRANSMISSION NOT ACTIVE</string>
 </resources>

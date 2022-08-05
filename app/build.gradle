@@ -61,6 +61,7 @@ dependencies {
     testImplementation "org.mockito.kotlin:mockito-kotlin:+"
     // Optional -- Mockk framework
     testImplementation "io.mockk:mockk:+"
+    implementation 'com.github.appium:java-client:0716883'
 }
 repositories {
     mavenCentral()
