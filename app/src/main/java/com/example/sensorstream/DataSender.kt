@@ -51,7 +51,7 @@ class SocketDataSender (
     }
 
     private suspend fun sendSensorDataContinuously(){
-        while(true) {
+        while(streamMode == STREAM_MODE.CONSTANT) {
             coroutineScope {
                 val transmitJob = websocketConnection.getTransmitCoroutineScope().launch { transmit() }
                 transmitJob.join()
@@ -66,10 +66,11 @@ class SocketDataSender (
     }
 
     private suspend fun launchSendingAndReceiving() {
-        val sendJob = websocketConnection.getTransmitCoroutineScope().launch { sendData(dataFlow) }
-        val receiveJob = websocketConnection.getTransmitCoroutineScope().launch { receiveData() }
-        sendJob.join()
-        receiveJob.join()
+        val sendAndReceiveJob = websocketConnection.getTransmitCoroutineScope().launch {
+            async { sendData(dataFlow) }
+            async { receiveData() }
+        }
+        sendAndReceiveJob.join()
     }
 
     private suspend fun transmit() {
