@@ -1,5 +1,6 @@
 package com.example.sensorstream
 
+import com.example.sensorstream.view.appModule
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,8 +13,6 @@ import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.koin.test.get
 import org.junit.Before
-import org.junit.BeforeClass
-import org.junit.runners.Parameterized
 import org.koin.core.context.GlobalContext.stopKoin
 import kotlin.test.assertEquals
 

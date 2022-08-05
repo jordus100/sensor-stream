@@ -1,12 +1,11 @@
-package com.example.sensorstream
+package com.example.sensorstream.view
 
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.CheckBox
 import androidx.appcompat.app.AppCompatActivity
 import com.example.sensorstream.databinding.MainBinding
-import com.example.sensorstream.databinding.SensorsReadoutsBinding
+import com.example.sensorstream.model.StreamMode
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,10 +17,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(uiBinding.root)
     }
 
-    fun onStartBtnClicked(view: View){
-        val sensorReadoutsScreenIntent = Intent(this, SensorsReadouts::class.java)
-        val streamMode =  if (uiBinding.streamModeCheckBox?.isChecked() == true) STREAM_MODE.CONSTANT
-                else STREAM_MODE.ON_TOUCH
+    fun onStartBtnClicked(view: View) {
+        val sensorReadoutsScreenIntent = Intent(this, SensorsReadoutsActivity::class.java)
+        val streamMode =  if (uiBinding.streamModeCheckBox?.isChecked() == true) StreamMode.CONSTANT else StreamMode.ON_TOUCH
         sensorReadoutsScreenIntent.putExtra("streamMode", streamMode)
         startActivity(sensorReadoutsScreenIntent)
     }

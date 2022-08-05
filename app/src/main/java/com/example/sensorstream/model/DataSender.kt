@@ -1,32 +1,26 @@
 package com.example.sensorstream
 
+import com.example.sensorstream.model.ConnectionStatus
+import com.example.sensorstream.model.SensorsData
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.NonCancellable.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
 import java.time.LocalDateTime
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
 interface SensorDataSender {
     val dataFlow: MutableStateFlow<SensorsData>
-    val connectionStateFlow: MutableStateFlow<CONNECTION>
+    val connectionStateFlow: MutableStateFlow<ConnectionStatus>
     var sendingData : Boolean
     suspend fun sendSensorData()
     fun stopSendingData()
     fun resumeSendingData()
 }
 
-fun SensorsData.format() : String{
-    val prefix = "["; val postfix = "]"; val separator = " ; "
-    var data = accelVals.joinToString(separator, prefix, postfix)
-    data = data + " " + gyroVals.joinToString(separator, prefix, postfix)
-    return data
-}
+fun SensorsData.format() = "$accel $gyro"
 
 class SocketDataSender (val host : String, val port : Int, val delay : Long,
                         override val dataFlow: MutableStateFlow<SensorsData>) : SensorDataSender{
@@ -39,14 +33,13 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
     override fun resumeSendingData(){
         sendingData = true
     }
-    override val connectionStateFlow: MutableStateFlow<CONNECTION> =
-        MutableStateFlow<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
+    override val connectionStateFlow: MutableStateFlow<ConnectionStatus> = MutableStateFlow(ConnectionStatus.NOT_ESTABLISHED)
 
     val client = HttpClient {
         install(WebSockets)
     }
     suspend fun handleConnection(socket : DefaultClientWebSocketSession) {
-        connectionStateFlow.value = CONNECTION.ESTABLISHED
+        connectionStateFlow.value = ConnectionStatus.ESTABLISHED
         coroutineScope {
             val receiveJob = launch { receiveData(socket) }
             val sendJob = launch { sendData(socket, dataFlow) }
@@ -91,7 +84,7 @@ class SocketDataSender (val host : String, val port : Int, val delay : Long,
         } catch (e: Throwable) {
             when (e) {
                 is CancellationException -> yield()
-                else -> connectionStateFlow.value = CONNECTION.NOT_ESTABLISHED
+                else -> connectionStateFlow.value = ConnectionStatus.NOT_ESTABLISHED
             }
         }
     }
