@@ -1,57 +1,51 @@
 package com.example.sensorstream
 
 import android.accounts.NetworkErrorException
+import com.example.sensorstream.model.ConnectionStatus
+import com.example.sensorstream.model.SensorsData
+import com.example.sensorstream.model.StreamMode
+import com.example.sensorstream.viewmodel.TRANSMISSION
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.events.*
 import io.ktor.http.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.NonCancellable.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
 import java.time.LocalDateTime
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
 interface SensorDataSender {
-    val connectionStateFlow: MutableStateFlow<CONNECTION>
+    val connectionStateFlow: MutableStateFlow<ConnectionStatus>
     val transmissionStateFlow : MutableStateFlow<TRANSMISSION>
     fun sendSensorData()
     fun pauseSendingData()
 }
 
-fun SensorsData.format() : String{
-    val prefix = "["; val postfix = "]"; val separator = " ; "
-    var data = accelVals.joinToString(separator, prefix, postfix)
-    data = data + " " + gyroVals.joinToString(separator, prefix, postfix)
-    return data
-}
-
+fun SensorsData.format() = "$accel $gyro"
 
 class SocketDataSender (
     val host : String, val port : Int, val delay : Long,
     val dataFlow: MutableStateFlow<SensorsData>,
-    val streamMode: STREAM_MODE
+    val streamMode: StreamMode
     ) : SensorDataSender{
 
-
-    override val connectionStateFlow = MutableStateFlow<CONNECTION>(CONNECTION.NOT_ESTABLISHED)
-    override val transmissionStateFlow = MutableStateFlow<TRANSMISSION>(TRANSMISSION.OFF)
+    override val connectionStateFlow = MutableStateFlow(ConnectionStatus.NOT_ESTABLISHED)
+    override val transmissionStateFlow = MutableStateFlow(TRANSMISSION.OFF)
 
     private val websocketConnection = WebsocketConnection(host, port, connectionStateFlow,
         transmissionStateFlow)
 
     override fun sendSensorData() {
-        if(streamMode == STREAM_MODE.ON_TOUCH)
+        if(streamMode == StreamMode.ON_TOUCH)
             websocketConnection.getTransmitCoroutineScope().launch { transmit() }
-        else if(streamMode == STREAM_MODE.CONSTANT){
+        else if(streamMode == StreamMode.CONSTANT){
             CoroutineScope(Dispatchers.Default).launch{ sendSensorDataContinuously() }
         }
     }
 
     private suspend fun sendSensorDataContinuously(){
-        while(streamMode == STREAM_MODE.CONSTANT) {
+        while(streamMode == StreamMode.CONSTANT) {
             coroutineScope {
                 val transmitJob = websocketConnection.getTransmitCoroutineScope().launch { transmit() }
                 transmitJob.join()
@@ -65,14 +59,6 @@ class SocketDataSender (
         transmissionStateFlow.value = TRANSMISSION.OFF
     }
 
-    private suspend fun launchSendingAndReceiving() {
-        val sendAndReceiveJob = websocketConnection.getTransmitCoroutineScope().launch {
-            async { sendData(dataFlow) }
-            async { receiveData() }
-        }
-        sendAndReceiveJob.join()
-    }
-
     private suspend fun transmit() {
         try {
             launchSendingAndReceiving()
@@ -83,11 +69,18 @@ class SocketDataSender (
         }
     }
 
+    private suspend fun launchSendingAndReceiving() {
+        val sendAndReceiveJob = websocketConnection.getTransmitCoroutineScope().launch {
+            async { sendData(dataFlow) }
+            async { receiveData() }
+        }
+        sendAndReceiveJob.join()
+    }
+
     suspend fun sendData(dataFlow: MutableStateFlow<SensorsData>) {
         val collectJob = websocketConnection.getTransmitCoroutineScope().launch {
-            dataFlow.sample(1L).collect { sensorsRead: SensorsData ->
-                val myMessage = sensorsRead.format()
-//                    println("OUTGOING: " + myMessage)
+            dataFlow.sample(1L).collect {
+                val myMessage = it.format()
                 withContext(websocketConnection.getTransmitCoroutineScope().coroutineContext) {
                     websocketConnection.getWebsocketConnection().send(myMessage)
                 }
@@ -119,7 +112,7 @@ class SocketDataSender (
 }
 
 class WebsocketConnection(val host: String, val port: Int,
-                          val connectionState : MutableStateFlow<CONNECTION>,
+                          val connectionState : MutableStateFlow<ConnectionStatus>,
                           val transmissionState : MutableStateFlow<TRANSMISSION>) {
     private val client = HttpClient {
         install(WebSockets)
@@ -157,6 +150,7 @@ class WebsocketConnection(val host: String, val port: Int,
         return transmitScope
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getWebsocketConnection(): DefaultClientWebSocketSession {
         if (!(::websocketConnection.isInitialized) || !websocketConnection.isActive
             || websocketConnection.incoming.isClosedForReceive)
@@ -182,10 +176,10 @@ class WebsocketConnection(val host: String, val port: Int,
                 launch { result = pingProcess.waitFor() }
             }
             if(result != 0)
-                connectionState.value = CONNECTION.NOT_ESTABLISHED
+                connectionState.value = ConnectionStatus.NOT_ESTABLISHED
             else {
                 getWebsocketConnection()
-                connectionState.value = CONNECTION.ESTABLISHED
+                connectionState.value = ConnectionStatus.ESTABLISHED
             }
             delay(100)
         }
