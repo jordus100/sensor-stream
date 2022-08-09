@@ -72,8 +72,6 @@ class SocketDataSender (
     }
 
     private suspend fun receiveData() {
-        var current = LocalDateTime.now()
-        var counter = 0
         var incoming: Frame.Text
         while (true) {
             withContext(websocketConnection.getTransmitCoroutineScope().coroutineContext) {
@@ -84,10 +82,6 @@ class SocketDataSender (
             coroutineContext.ensureActive()
             transmissionStateFlow.value = TransmissionState.ON
             receivedFlow.emit(incoming.readText())
-            if (current.second != LocalDateTime.now().second) {
-                current = LocalDateTime.now()
-            } else
-                counter++
         }
     }
 }
