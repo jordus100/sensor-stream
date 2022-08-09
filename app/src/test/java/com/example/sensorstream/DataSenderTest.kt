@@ -36,7 +36,7 @@ class TestWebsocketConnection(host : String, port : Int,
     }
 }
 
-class SensorDataSenderTest : KoinTest {
+open class SensorDataSenderTest : KoinTest {
     private val testSensorFlow = MutableStateFlow(SensorsData())
 
     val sensorDataSender : SensorDataSender by lazy {
