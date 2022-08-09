@@ -1,9 +1,7 @@
-package com.example.sensorstream.view
+package com.example.sensorstream.model
 
 import android.app.Application
 import com.example.sensorstream.*
-import com.example.sensorstream.viewmodel.SensorsDataSource
-import com.example.sensorstream.viewmodel.SensorsDataSourceImpl
 import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -11,12 +9,16 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 
 val appModule = module {
-
-    single<SensorsReadoutsViewModel> { params -> SensorsReadoutsViewModel (sensorManager = params.get(),
-        streamMode = params.get()) }
-    single<SensorsDataSource> { params -> SensorsDataSourceImpl(sensorManager = params.get()) }
-    single<SensorDataSender> { params -> SocketDataSender(host = params.get(), port = params.get(),
-        delay = params.get(), dataFlow = params.get(), streamMode = params.get()) }
+    single<SensorsReadoutsViewModel> { params -> SensorsReadoutsViewModel(params.get()) }
+    single<SensorStreamingManager> { params -> SensorStreamingManager(
+        params.get(0), params.get(1), params.get(2))
+    }
+    single<SensorsDataSource> { params -> SensorsDataSource(params.get()) }
+    single<SensorDataSender> { params -> SocketDataSender(params.get(0), params.get(1),
+        params.get(2), params.get(3)) }
+    single<WebsocketConnection> { params -> WebsocketConnection(params.get(0), params.get(1),
+        params.get(2), params[3]
+    )}
 }
 
 class SensorStreamApp : Application(){

@@ -1,23 +1,27 @@
 package com.example.sensorstream
 
-import android.accounts.NetworkErrorException
 import com.example.sensorstream.model.ConnectionStatus
 import com.example.sensorstream.model.SensorsData
-import com.example.sensorstream.model.StreamMode
-import com.example.sensorstream.viewmodel.TRANSMISSION
+import com.example.sensorstream.viewmodel.TransmissionState
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
-import io.ktor.events.*
 import io.ktor.http.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
+import org.koin.core.parameter.parametersOf
 import java.time.LocalDateTime
+import kotlin.coroutines.coroutineContext
 
 interface SensorDataSender {
     val connectionStateFlow: MutableStateFlow<ConnectionStatus>
-    val transmissionStateFlow : MutableStateFlow<TRANSMISSION>
+    val transmissionStateFlow : MutableStateFlow<TransmissionState>
+    val receivedFlow : MutableStateFlow<String>
     fun sendSensorData()
     fun pauseSendingData()
 }
@@ -27,49 +31,26 @@ fun SensorsData.format() = "$accel $gyro"
 class SocketDataSender (
     val host : String, val port : Int, val delay : Long,
     val dataFlow: MutableStateFlow<SensorsData>,
-    val streamMode: StreamMode
-    ) : SensorDataSender{
+    ) : SensorDataSender, KoinComponent{
 
     override val connectionStateFlow = MutableStateFlow(ConnectionStatus.NOT_ESTABLISHED)
-    override val transmissionStateFlow = MutableStateFlow(TRANSMISSION.OFF)
-
-    private val websocketConnection = WebsocketConnection(host, port, connectionStateFlow,
-        transmissionStateFlow)
-
-    override fun sendSensorData() {
-        if(streamMode == StreamMode.ON_TOUCH)
-            websocketConnection.getTransmitCoroutineScope().launch { transmit() }
-        else if(streamMode == StreamMode.CONSTANT){
-            CoroutineScope(Dispatchers.Default).launch{ sendSensorDataContinuously() }
-        }
+    override val transmissionStateFlow = MutableStateFlow(TransmissionState.OFF)
+    override val receivedFlow = MutableStateFlow(String())
+    private val websocketConnection : WebsocketConnection = get() {
+        parametersOf( host, port, connectionStateFlow, transmissionStateFlow)
     }
 
-    private suspend fun sendSensorDataContinuously(){
-        while(streamMode == StreamMode.CONSTANT) {
-            coroutineScope {
-                val transmitJob = websocketConnection.getTransmitCoroutineScope().launch { transmit() }
-                transmitJob.join()
-            }
-            delay(100)
-        }
+
+    override fun sendSensorData() {
+        websocketConnection.getTransmitCoroutineScope().launch { transmit() }
     }
 
     override fun pauseSendingData(){
-        websocketConnection.getTransmitCoroutineScope().coroutineContext.cancelChildren()
-        transmissionStateFlow.value = TRANSMISSION.OFF
+        websocketConnection.getTransmitCoroutineScope().cancel()
+        transmissionStateFlow.value = TransmissionState.OFF
     }
 
     private suspend fun transmit() {
-        try {
-            launchSendingAndReceiving()
-        } catch (e: Throwable) {
-            transmissionStateFlow.value = TRANSMISSION.OFF
-            yield()
-            throw e
-        }
-    }
-
-    private suspend fun launchSendingAndReceiving() {
         val sendAndReceiveJob = websocketConnection.getTransmitCoroutineScope().launch {
             async { sendData(dataFlow) }
             async { receiveData() }
@@ -82,6 +63,7 @@ class SocketDataSender (
             dataFlow.sample(1L).collect {
                 val myMessage = it.format()
                 withContext(websocketConnection.getTransmitCoroutineScope().coroutineContext) {
+                    ensureActive()
                     websocketConnection.getWebsocketConnection().send(myMessage)
                 }
             }
@@ -95,31 +77,38 @@ class SocketDataSender (
         var incoming: Frame.Text
         while (true) {
             withContext(websocketConnection.getTransmitCoroutineScope().coroutineContext) {
+                ensureActive()
                 incoming =
                     websocketConnection.getWebsocketConnection().incoming.receive() as Frame.Text
             }
-            transmissionStateFlow.value = TRANSMISSION.ON
-            handleIncoming(incoming)
+            coroutineContext.ensureActive()
+            transmissionStateFlow.value = TransmissionState.ON
+            receivedFlow.emit(incoming.readText())
             if (current.second != LocalDateTime.now().second) {
                 current = LocalDateTime.now()
             } else
                 counter++
         }
     }
-    private fun handleIncoming( message : Frame.Text? ){
-//        println("INCOMING: " + message?.readText())
-    }
 }
 
-class WebsocketConnection(val host: String, val port: Int,
-                          val connectionState : MutableStateFlow<ConnectionStatus>,
-                          val transmissionState : MutableStateFlow<TRANSMISSION>) {
+open class WebsocketConnection(val host: String, val port: Int,
+                               val connectionState : MutableStateFlow<ConnectionStatus>,
+                               val transmissionState : MutableStateFlow<TransmissionState>) {
     private val client = HttpClient {
         install(WebSockets)
     }
+    private lateinit var websocketConnection: DefaultClientWebSocketSession
+    private lateinit var transmitScope: CoroutineScope
+    private val websocketConnectionMutex = Mutex()
+
     private val handler = CoroutineExceptionHandler { _, e ->
-        transmitScope.coroutineContext.cancelChildren()
-        transmissionState.value = TRANSMISSION.OFF
+        transmitScope.coroutineContext.cancel()
+        transmissionState.value = TransmissionState.OFF
+    }
+
+    init {
+        CoroutineScope(Dispatchers.Default).launch { handleConnection() }
     }
 
     private suspend fun handleConnection() {
@@ -127,22 +116,17 @@ class WebsocketConnection(val host: String, val port: Int,
             try {
                 coroutineScope {
                     launch {
-                        getWebsocketConnection()
+                        kotlin.runCatching {
+                            getWebsocketConnection()
+                        }
                         monitorConnection()
                     }
                 }
             } catch (e: Exception) {
             }
-            delay(50)
+            delay(100)
         }
     }
-
-    init {
-        CoroutineScope(Dispatchers.Default).launch { handleConnection() }
-    }
-
-    private lateinit var websocketConnection: DefaultClientWebSocketSession
-    private lateinit var transmitScope: CoroutineScope
 
     fun getTransmitCoroutineScope(): CoroutineScope {
         if (!::transmitScope.isInitialized || !transmitScope.isActive)
@@ -152,36 +136,40 @@ class WebsocketConnection(val host: String, val port: Int,
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun getWebsocketConnection(): DefaultClientWebSocketSession {
-        if (!(::websocketConnection.isInitialized) || !websocketConnection.isActive
-            || websocketConnection.incoming.isClosedForReceive)
-        {
-            try {
-                websocketConnection = client.webSocketSession(
-                    method = HttpMethod.Get, host,
-                    port, path = ""
-                )
-                return websocketConnection
-            } catch (e: Exception) {
-                throw NetworkErrorException()
-            }
-        } else return websocketConnection
+        websocketConnectionMutex.withLock {
+            if (!(::websocketConnection.isInitialized) || !websocketConnection.isActive
+                || websocketConnection.incoming.isClosedForReceive
+            ) {
+                try {
+                    websocketConnection = client.webSocketSession(
+                        method = HttpMethod.Get, host,
+                        port, path = ""
+                    )
+                    connectionState.value = ConnectionStatus.ESTABLISHED
+                    return websocketConnection
+                } catch (e: Exception) {
+                    throw e
+                }
+            } else return websocketConnection
+        }
     }
 
-    private suspend fun monitorConnection() {
+    protected open suspend fun monitorConnection() {
         while(true){
-            val command = "ping -c 1 -W 1 google.com";
+            val command = "ping -c 2 -W 1 8.8.8.8";
             val pingProcess = Runtime.getRuntime().exec(command)
             var result = 0
             coroutineScope {
-                launch { result = pingProcess.waitFor() }
+                val pingJob = launch { result = pingProcess.waitFor() }
+                pingJob.join()
             }
-            if(result != 0)
+            if(result != 0){
                 connectionState.value = ConnectionStatus.NOT_ESTABLISHED
-            else {
-                getWebsocketConnection()
-                connectionState.value = ConnectionStatus.ESTABLISHED
+                kotlin.runCatching {
+                    getWebsocketConnection()
+                }
             }
-            delay(100)
+            delay(500)
         }
     }
 }

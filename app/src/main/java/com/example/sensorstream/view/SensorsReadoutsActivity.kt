@@ -3,6 +3,7 @@ package com.example.sensorstream.view
 import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.MotionEvent
 import androidx.lifecycle.*
 import com.example.sensorstream.*
 import com.example.sensorstream.databinding.SensorsReadoutsBinding
@@ -10,57 +11,75 @@ import com.example.sensorstream.model.ConnectionStatus
 import com.example.sensorstream.model.SensorsData
 import com.example.sensorstream.model.StreamMode
 import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
-import com.example.sensorstream.viewmodel.TRANSMISSION
+import com.example.sensorstream.viewmodel.StartButtonState
+import com.example.sensorstream.viewmodel.TransmissionState
 import org.koin.android.ext.android.get
 import org.koin.core.component.KoinComponent
 import org.koin.core.parameter.parametersOf
 import java.text.DecimalFormat
 
+val DEFAULT_STREAM_MODE = StreamMode.ON_TOUCH
 
 class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
     private lateinit var sensorsViewModel: SensorsReadoutsViewModel
     private lateinit var sensorManager: SensorManager
     private lateinit var uiBinding: SensorsReadoutsBinding
-
     private val sensorsDataObserver = Observer<SensorsData> { sensorsData ->
         updateSensorsUI(sensorsData)
     }
-    private val connectionDataObserver = Observer<ConnectionStatus> { connection ->
-        updateConnectionStatusUI(connection)
+    private val connectionDataObserver = Observer<ConnectionStatus> {
+        updateConnectionStatusUI(it)
     }
-    private val transmissionDataObserver = Observer<TRANSMISSION> { transmission ->
-        updateTransmissionStatusUI(transmission)
+    private val transmissionStateDataObserver = Observer<TransmissionState> {
+        updateTransmissionStateStatusUI(it)
     }
+    private val startButtonStateDataObserver = Observer<StartButtonState> {
+        updateStartButton(it)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         uiBinding = SensorsReadoutsBinding.inflate(layoutInflater)
         setContentView(uiBinding.root)
     }
 
+    override fun onStart(){
+        super.onStart()
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        sensorsViewModel = get { parametersOf(sensorManager) }
+        sensorsViewModel.sensorsDataLive.observe(this, sensorsDataObserver)
+        sensorsViewModel.connectionDataLive.observe(this, connectionDataObserver)
+        sensorsViewModel.transmissionDataLive.observe(this, transmissionStateDataObserver)
+        sensorsViewModel.startButtonLabelDataLive.observe(this, startButtonStateDataObserver)
+        setEventHandlers()
+    }
+
     private fun setEventHandlers(){
         uiBinding.root.setOnTouchListener { _, event ->
             uiBinding.root.performClick()
-            sensorsViewModel.onRootTouch(event)
+            if(event.pointerCount == 1) {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        sensorsViewModel.screenPressed()
+                        return@setOnTouchListener true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        sensorsViewModel.screenTouchReleased()
+                        return@setOnTouchListener true
+                    }
+                    else -> return@setOnTouchListener false
+                }
+            }
+            return@setOnTouchListener false
         }
-    }
 
-    private fun retrieveIntentBundledData() : List<Comparable<*>>{
-        val extras = intent.extras
-        val retrievedData = arrayListOf<Comparable<*>>()
-        val constantStreamMode = ((extras?.get("streamMode") ?: StreamMode.ON_TOUCH) as StreamMode)
-        retrievedData.add(constantStreamMode)
-        return retrievedData
-    }
+        uiBinding.startButton.setOnClickListener{ _ ->
+            sensorsViewModel.startButtonClicked()
+        }
 
-    override fun onStart(){
-        super.onStart()
-        val retrievedData = retrieveIntentBundledData()
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        sensorsViewModel = get { parametersOf(sensorManager, retrievedData[0] as StreamMode) }
-        sensorsViewModel.sensorsDataLive.observe(this, sensorsDataObserver)
-        sensorsViewModel.connectionDataLive.observe(this, connectionDataObserver)
-        sensorsViewModel.transmissionDataLive.observe(this, transmissionDataObserver)
-        setEventHandlers()
+        uiBinding.streamModeCheckBox.setOnCheckedChangeListener{ _, isChecked ->
+            sensorsViewModel.streamModeCheckChanged(isChecked)
+        }
     }
 
     private fun updateSensorsUI(sensorsData: SensorsData) {
@@ -75,14 +94,32 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
     }
     private fun updateConnectionStatusUI(connection : ConnectionStatus){
         when(connection){
-            ConnectionStatus.ESTABLISHED -> uiBinding.statusText.text = getString(R.string.connection_good)
-            ConnectionStatus.NOT_ESTABLISHED -> uiBinding.statusText.text = getString(R.string.connection_bad)
+            ConnectionStatus.ESTABLISHED -> uiBinding.statusText.text = getString(
+                R.string.connection_good)
+            ConnectionStatus.NOT_ESTABLISHED -> uiBinding.statusText.text = getString(
+                R.string.connection_bad)
         }
     }
-    private fun updateTransmissionStatusUI(transmission : TRANSMISSION){
-        when(transmission){
-            TRANSMISSION.ON -> uiBinding.transmissionStatusText.text = getString(R.string.transmission_status_on)
-            TRANSMISSION.OFF -> uiBinding.transmissionStatusText.text = getString(R.string.transmission_status_off)
+    private fun updateTransmissionStateStatusUI(transmissionState : TransmissionState){
+        when(transmissionState){
+            TransmissionState.ON -> uiBinding.transmissionStatusText.text = getString(
+                R.string.transmission_status_on)
+            TransmissionState.OFF -> uiBinding.transmissionStatusText.text = getString(
+                R.string.transmission_status_off)
+        }
+    }
+
+    fun updateStartButton(startButtonState: StartButtonState){
+        when(startButtonState){
+            StartButtonState.START -> {
+                uiBinding.startButton.isEnabled = true
+                uiBinding.startButton.text = "START"
+            }
+            StartButtonState.STOP -> uiBinding.startButton.text = "STOP"
+            StartButtonState.INACTIVE -> {
+                uiBinding.startButton.text = "START"
+                uiBinding.startButton.isEnabled = false
+            }
         }
     }
 
