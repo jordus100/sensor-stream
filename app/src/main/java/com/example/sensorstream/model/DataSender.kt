@@ -8,6 +8,8 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.sync.Mutex
@@ -29,20 +31,20 @@ interface SensorDataSender {
 fun SensorsData.format() = "$accel $gyro"
 
 class SocketDataSender (
-    val host : String, val port : Int, val delay : Long,
-    val dataFlow: MutableStateFlow<SensorsData>,
-    ) : SensorDataSender, KoinComponent{
+    val host : String, val port : Int, val dataFlow: MutableStateFlow<SensorsData>)
+    : SensorDataSender, KoinComponent {
 
     override val connectionStateFlow = MutableStateFlow(ConnectionStatus.NOT_ESTABLISHED)
     override val transmissionStateFlow = MutableStateFlow(TransmissionState.OFF)
     override val receivedFlow = MutableStateFlow(String())
     private val websocketConnection : WebsocketConnection = get() {
-        parametersOf( host, port, connectionStateFlow, transmissionStateFlow)
+        parametersOf(connectionStateFlow, transmissionStateFlow)
     }
 
 
     override fun sendSensorData() {
-        websocketConnection.getTransmitCoroutineScope().launch { transmit() }
+        if(connectionStateFlow.value == ConnectionStatus.ESTABLISHED)
+            websocketConnection.getTransmitCoroutineScope().launch { transmit() }
     }
 
     override fun pauseSendingData(){
@@ -90,7 +92,7 @@ open class WebsocketConnection(val host: String, val port: Int,
                                val connectionState : MutableStateFlow<ConnectionStatus>,
                                val transmissionState : MutableStateFlow<TransmissionState>) {
     private val client = HttpClient {
-        install(WebSockets)
+        install(WebSockets){ }
     }
     private lateinit var websocketConnection: DefaultClientWebSocketSession
     private lateinit var transmitScope: CoroutineScope
@@ -107,16 +109,11 @@ open class WebsocketConnection(val host: String, val port: Int,
 
     private suspend fun handleConnection() {
         while (true) {
-            try {
-                coroutineScope {
-                    launch {
-                        kotlin.runCatching {
-                            getWebsocketConnection()
-                        }
+            coroutineScope {
+                try {
+                        getWebsocketConnection()
                         monitorConnection()
-                    }
-                }
-            } catch (e: Exception) {
+                    } catch (e: Exception) { }
             }
             delay(100)
         }
@@ -132,7 +129,7 @@ open class WebsocketConnection(val host: String, val port: Int,
     suspend fun getWebsocketConnection(): DefaultClientWebSocketSession {
         websocketConnectionMutex.withLock {
             if (!(::websocketConnection.isInitialized) || !websocketConnection.isActive
-                || websocketConnection.incoming.isClosedForReceive
+                || websocketConnection.outgoing.isClosedForSend
             ) {
                 try {
                     websocketConnection = client.webSocketSession(
@@ -150,20 +147,25 @@ open class WebsocketConnection(val host: String, val port: Int,
 
     protected open suspend fun monitorConnection() {
         while(true){
-            val command = "ping -c 2 -W 1 8.8.8.8";
-            val pingProcess = Runtime.getRuntime().exec(command)
-            var result = 0
-            coroutineScope {
-                val pingJob = launch { result = pingProcess.waitFor() }
-                pingJob.join()
-            }
-            if(result != 0){
-                connectionState.value = ConnectionStatus.NOT_ESTABLISHED
-                kotlin.runCatching {
-                    getWebsocketConnection()
+            if(transmissionState.value == TransmissionState.OFF){
+                coroutineScope {
+                    try {
+                        withTimeoutOrNull(1000) {
+                            websocketConnection.send("") // not many better solutions than
+                            //to send a test message and wait for an exception
+                        }
+                    } catch (e: Exception) {
+                        withContext(NonCancellable) {
+                            connectionState.value = ConnectionStatus.NOT_ESTABLISHED
+                            kotlin.runCatching {
+                                getWebsocketConnection()
+                            }
+                        }
+                    }
                 }
             }
             delay(500)
         }
     }
+
 }

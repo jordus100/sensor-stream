@@ -8,17 +8,19 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 
+val DEFAULT_STREAM_MODE = StreamMode.ON_TOUCH
+
 val appModule = module {
     single<SensorsReadoutsViewModel> { params -> SensorsReadoutsViewModel(params.get()) }
     single<SensorStreamingManager> { params -> SensorStreamingManager(
-        params.get(0), params.get(1), params.get(2))
+        params.get(0), streamMode = DEFAULT_STREAM_MODE, params.get(1))
     }
     single<SensorsDataSource> { params -> SensorsDataSource(params.get()) }
-    single<SensorDataSender> { params -> SocketDataSender(params.get(0), params.get(1),
-        params.get(2), params.get(3)) }
-    single<WebsocketConnection> { params -> WebsocketConnection(params.get(0), params.get(1),
-        params.get(2), params[3]
-    )}
+    single<SensorDataSender> { params -> SocketDataSender(
+        BuildConfig.WEBSOCKET_SERVER, BuildConfig.WEBSOCKET_SERVER_PORT,
+        params.get(0)) }
+    single<WebsocketConnection> { params -> WebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
+        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0), params.get(1))}
 }
 
 class SensorStreamApp : Application(){

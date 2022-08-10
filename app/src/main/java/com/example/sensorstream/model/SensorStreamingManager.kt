@@ -2,14 +2,12 @@ package com.example.sensorstream.model
 
 import androidx.lifecycle.MutableLiveData
 import com.example.sensorstream.SensorDataSender
-import com.example.sensorstream.view.DEFAULT_STREAM_MODE
 import com.example.sensorstream.viewmodel.StartButtonState
 import com.example.sensorstream.viewmodel.TransmissionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.koin.androidx.scope.LifecycleViewModelScopeDelegate
 
 class SensorStreamingManager(val sensorDataSender: SensorDataSender, var streamMode: StreamMode,
 val transmissionState: MutableLiveData<TransmissionState>) {
@@ -27,7 +25,6 @@ val transmissionState: MutableLiveData<TransmissionState>) {
     }
 
     fun screenTouchReleased() {
-        println("RELEASED")
         if (streamMode == StreamMode.ON_TOUCH)
             sensorDataSender.pauseSendingData()
     }
@@ -77,9 +74,9 @@ val transmissionState: MutableLiveData<TransmissionState>) {
 
     private suspend fun updateStartButton(){
         while(true){
-            if(transmissionState.value == TransmissionState.OFF)
-                if(startButtonLabelDataLive.value != StartButtonState.INACTIVE)
-                    startButtonLabelDataLive.postValue(StartButtonState.START)
+            if(transmissionState.value == TransmissionState.OFF &&
+            startButtonLabelDataLive.value != StartButtonState.INACTIVE)
+                startButtonLabelDataLive.postValue(StartButtonState.START)
             delay(300)
         }
     }

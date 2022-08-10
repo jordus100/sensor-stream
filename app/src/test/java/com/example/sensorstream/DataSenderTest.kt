@@ -40,15 +40,15 @@ open class SensorDataSenderTest : KoinTest {
     private val testSensorFlow = MutableStateFlow(SensorsData())
 
     val sensorDataSender : SensorDataSender by lazy {
-        get<SensorDataSender> { parametersOf(WEBSOCKET_SERVER_URL, WEBSOCKET_SERVER_PORT, 1L,
-            testSensorFlow, StreamMode.ON_TOUCH) }
+        get<SensorDataSender> { parametersOf(testSensorFlow) }
     }
 
     val testModule = module {
-        single<SensorDataSender> { params -> SocketDataSender(host = params.get(), port = params.get(),
-            delay = params.get(), dataFlow = params.get()) }
-        single<WebsocketConnection> { params -> TestWebsocketConnection(params.get(), params.get(),
-            params.get(), params.get(3))}
+        single<SensorDataSender> { params -> SocketDataSender(
+            BuildConfig.WEBSOCKET_SERVER, BuildConfig.WEBSOCKET_SERVER_PORT,
+            params.get(0)) }
+        single<WebsocketConnection> { params -> TestWebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
+            BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0), params.get(1))}
     }
 
     @Before
