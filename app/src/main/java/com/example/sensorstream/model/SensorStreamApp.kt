@@ -16,11 +16,9 @@ val appModule = module {
         params.get(0), streamMode = DEFAULT_STREAM_MODE, params.get(1))
     }
     single<SensorsDataSource> { params -> SensorsDataSource(params.get()) }
-    single<SensorDataSender> { params -> SocketDataSender(
-        BuildConfig.WEBSOCKET_SERVER, BuildConfig.WEBSOCKET_SERVER_PORT,
-        params.get(0)) }
+    single<SensorDataSender> { params -> SocketDataSender(params.get(0)) }
     single<WebsocketConnection> { params -> WebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
-        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0), params.get(1))}
+        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0))}
 }
 
 class SensorStreamApp : Application(){

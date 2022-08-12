@@ -19,6 +19,8 @@ import org.koin.test.get
 import org.junit.Before
 import org.koin.core.context.GlobalContext.stopKoin
 import org.koin.dsl.module
+import org.koin.java.KoinJavaComponent.inject
+import org.koin.test.inject
 import kotlin.test.assertEquals
 
 const val WEBSOCKET_SERVER_URL = "echo.websocket.events"
@@ -36,20 +38,20 @@ class TestWebsocketConnection(host : String, port : Int,
     }
 }
 
+val testModule = module {
+    single<SensorDataSender> { params -> SocketDataSender(
+        BuildConfig.WEBSOCKET_SERVER, BuildConfig.WEBSOCKET_SERVER_PORT,
+        params.get(0)) }
+    single<WebsocketConnection> { params -> TestWebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
+        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0), params.get(1))}
+}
+val testSensorFlow = MutableStateFlow(SensorsData())
+
+
 open class SensorDataSenderTest : KoinTest {
-    private val testSensorFlow = MutableStateFlow(SensorsData())
 
-    val sensorDataSender : SensorDataSender by lazy {
-        get<SensorDataSender> { parametersOf(testSensorFlow) }
-    }
+    val sensorDataSender : SensorDataSender by inject{ parametersOf(testSensorFlow) }
 
-    val testModule = module {
-        single<SensorDataSender> { params -> SocketDataSender(
-            BuildConfig.WEBSOCKET_SERVER, BuildConfig.WEBSOCKET_SERVER_PORT,
-            params.get(0)) }
-        single<WebsocketConnection> { params -> TestWebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
-            BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0), params.get(1))}
-    }
 
     @Before
     fun setUp() {
