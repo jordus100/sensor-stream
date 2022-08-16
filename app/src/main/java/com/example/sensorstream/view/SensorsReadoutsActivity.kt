@@ -9,10 +9,10 @@ import com.example.sensorstream.*
 import com.example.sensorstream.databinding.SensorsReadoutsBinding
 import com.example.sensorstream.model.ConnectionStatus
 import com.example.sensorstream.model.SensorsData
-import com.example.sensorstream.model.StreamMode
 import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
 import com.example.sensorstream.viewmodel.StartButtonState
 import com.example.sensorstream.viewmodel.TransmissionState
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.core.component.KoinComponent
 import org.koin.core.parameter.parametersOf
@@ -23,18 +23,6 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
     private lateinit var sensorsViewModel: SensorsReadoutsViewModel
     private lateinit var sensorManager: SensorManager
     private lateinit var uiBinding: SensorsReadoutsBinding
-    private val sensorsDataObserver = Observer<SensorsData> { sensorsData ->
-        updateSensorsUI(sensorsData)
-    }
-    private val connectionDataObserver = Observer<ConnectionStatus> {
-        updateConnectionStatusUI(it)
-    }
-    private val transmissionStateDataObserver = Observer<TransmissionState> {
-        updateTransmissionStateStatusUI(it)
-    }
-    private val startButtonStateDataObserver = Observer<StartButtonState> {
-        updateStartButton(it)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,14 +30,18 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         setContentView(uiBinding.root)
     }
 
-    override fun onStart(){
+    override fun onStart() {
         super.onStart()
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         sensorsViewModel = get { parametersOf(sensorManager) }
-        sensorsViewModel.sensorsDataLive.observe(this, sensorsDataObserver)
-        sensorsViewModel.connectionDataLive.observe(this, connectionDataObserver)
-        sensorsViewModel.transmissionDataLive.observe(this, transmissionStateDataObserver)
-        sensorsViewModel.startButtonLabelDataLive.observe(this, startButtonStateDataObserver)
+        lifecycleScope.launch {
+            sensorsViewModel.state.collect {
+                updateSensorsUI(it.sensorsData)
+                updateConnectionStatusUI(it.connectionStatus)
+                updateTransmissionStateStatusUI(it.transmissionState)
+                updateStartButton(it.startButtonState)
+            }
+        }
         setEventHandlers()
     }
 
@@ -112,11 +104,11 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         when(startButtonState){
             StartButtonState.START -> {
                 uiBinding.startButton.isEnabled = true
-                uiBinding.startButton.text = "START"
+                uiBinding.startButton.text = getString(R.string.start)
             }
-            StartButtonState.STOP -> uiBinding.startButton.text = "STOP"
+            StartButtonState.STOP -> uiBinding.startButton.text = getString(R.string.stop)
             StartButtonState.INACTIVE -> {
-                uiBinding.startButton.text = "START"
+                uiBinding.startButton.text = getString(R.string.start)
                 uiBinding.startButton.isEnabled = false
             }
         }

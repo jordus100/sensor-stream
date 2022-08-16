@@ -6,4 +6,6 @@
     hold down a finger</string>
     <string name="transmission_status_on">TRANSMISSION ACTIVE</string>
     <string name="transmission_status_off">TRANSMISSION NOT ACTIVE</string>
+    <string name="start">START</string>
+    <string name="stop">STOP</string>
 </resources>

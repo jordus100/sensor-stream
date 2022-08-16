@@ -1,17 +1,22 @@
 package com.example.sensorstream.model
 
-import androidx.lifecycle.MutableLiveData
 import com.example.sensorstream.SensorDataSender
 import com.example.sensorstream.viewmodel.StartButtonState
 import com.example.sensorstream.viewmodel.TransmissionState
+import com.example.sensorstream.viewstate.SensorsViewState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
 class SensorStreamingManager(val sensorDataSender: SensorDataSender, var streamMode: StreamMode,
-val transmissionState: MutableLiveData<TransmissionState>) {
-    val startButtonLabelDataLive = MutableLiveData(StartButtonState.INACTIVE)
+val state : StateFlow<SensorsViewState>
+) {
+    private val _startButtonStateFlow = MutableStateFlow(StartButtonState.INACTIVE)
+    val startButtonStateFlow : StateFlow<StartButtonState>
+        get() = _startButtonStateFlow
 
     init{
         CoroutineScope(Dispatchers.Default).launch{
@@ -31,14 +36,14 @@ val transmissionState: MutableLiveData<TransmissionState>) {
 
     fun startButtonClicked() {
         if (streamMode == StreamMode.CONSTANT) {
-            when (startButtonLabelDataLive.value) {
+            when (state.value.startButtonState) {
                 StartButtonState.START -> {
                     sensorDataSender.sendSensorData()
-                    startButtonLabelDataLive.value = StartButtonState.STOP
+                    _startButtonStateFlow.value = StartButtonState.STOP
                 }
                 StartButtonState.STOP -> {
                     sensorDataSender.pauseSendingData()
-                    startButtonLabelDataLive.value = StartButtonState.START
+                    _startButtonStateFlow.value = StartButtonState.START
                 }
                 else -> return
             }
@@ -63,21 +68,20 @@ val transmissionState: MutableLiveData<TransmissionState>) {
         if(newStreamMode == StreamMode.CONSTANT){
             sensorDataSender.pauseSendingData()
             streamMode = StreamMode.CONSTANT
-            startButtonLabelDataLive.value = StartButtonState.START
+            _startButtonStateFlow.value = StartButtonState.START
         }
         else{
             sensorDataSender.pauseSendingData()
             streamMode = StreamMode.ON_TOUCH
-            startButtonLabelDataLive.value = StartButtonState.INACTIVE
+            _startButtonStateFlow.value = StartButtonState.INACTIVE
         }
     }
 
     private suspend fun updateStartButton(){
-        while(true){
-            if(transmissionState.value == TransmissionState.OFF &&
-            startButtonLabelDataLive.value != StartButtonState.INACTIVE)
-                startButtonLabelDataLive.postValue(StartButtonState.START)
-            delay(300)
+        state.sample(300L).collect{
+            if(it.transmissionState == TransmissionState.OFF
+                && state.value.startButtonState != StartButtonState.INACTIVE)
+                _startButtonStateFlow.value = StartButtonState.START
         }
     }
 

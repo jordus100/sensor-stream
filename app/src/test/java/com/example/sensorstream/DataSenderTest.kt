@@ -1,12 +1,10 @@
 package com.example.sensorstream
 
 import com.example.sensorstream.model.*
-import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
 import com.example.sensorstream.viewmodel.TransmissionState
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -15,35 +13,16 @@ import org.junit.Test
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
-import org.koin.test.get
 import org.junit.Before
 import org.koin.core.context.GlobalContext.stopKoin
 import org.koin.dsl.module
-import org.koin.java.KoinJavaComponent.inject
 import org.koin.test.inject
 import kotlin.test.assertEquals
 
-const val WEBSOCKET_SERVER_URL = "echo.websocket.events"
-const val WEBSOCKET_SERVER_PORT = 80
-
-
-class TestWebsocketConnection(host : String, port : Int,
-                              connectionState : MutableStateFlow<ConnectionStatus>,
-                              transmissionState: MutableStateFlow<TransmissionState>)
-    : WebsocketConnection(host = host, port, connectionState, transmissionState) {
-
-    override suspend fun monitorConnection(){
-        while(true)
-            delay(2000)
-    }
-}
-
 val testModule = module {
-    single<SensorDataSender> { params -> SocketDataSender(
-        BuildConfig.WEBSOCKET_SERVER, BuildConfig.WEBSOCKET_SERVER_PORT,
-        params.get(0)) }
-    single<WebsocketConnection> { params -> TestWebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
-        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0), params.get(1))}
+    single<SensorDataSender> { params -> SocketDataSender(params.get(0)) }
+    single<WebsocketConnection> { params -> WebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
+        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0))}
 }
 val testSensorFlow = MutableStateFlow(SensorsData())
 

@@ -5,6 +5,9 @@ import androidx.lifecycle.*
 import com.example.sensorstream.SensorDataSender
 import com.example.sensorstream.model.SensorStreamingManager
 import com.example.sensorstream.model.*
+import com.example.sensorstream.viewstate.SensorsViewState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.sample
 import org.koin.core.parameter.parametersOf
@@ -25,34 +28,40 @@ const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
 class SensorsReadoutsViewModel (val sensorManager: SensorManager)
     : ViewModel(), KoinComponent {
 
+    private val _state = MutableStateFlow(
+        SensorsViewState(
+            ConnectionStatus.NOT_ESTABLISHED, TransmissionState.OFF,
+            SensorsData(), StartButtonState.INACTIVE))
+    val state : StateFlow<SensorsViewState>
+        get() = _state
+
     private val sensorsDataSource: SensorsDataSource by inject { parametersOf(sensorManager) }
     private val sensorDataSender: SensorDataSender by inject {
         parametersOf( sensorsDataSource.sensorDataFlow)
     }
-    val sensorsDataLive: MutableLiveData<SensorsData> by lazy {
-        MutableLiveData<SensorsData>()
-    }
 
-    val connectionDataLive = MutableLiveData(ConnectionStatus.NOT_ESTABLISHED)
-    val transmissionDataLive = MutableLiveData(TransmissionState.OFF)
     private val sensorStreamingManager : SensorStreamingManager by inject {
-        parametersOf(sensorDataSender, transmissionDataLive) }
-    val startButtonLabelDataLive = sensorStreamingManager.startButtonLabelDataLive
+        parametersOf(sensorDataSender, state) }
 
     init {
         viewModelScope.launch {
             sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect {
-                sensorsDataLive.value = it
+                _state.value = _state.value.copy(sensorsData = it)
             }
         }
         viewModelScope.launch {
             sensorDataSender.transmissionStateFlow.collect {
-                transmissionDataLive.value = it
+                _state.value = _state.value.copy(transmissionState = it)
             }
         }
         viewModelScope.launch {
             sensorDataSender.connectionStateFlow.collect {
-                connectionDataLive.value = it
+                _state.value = _state.value.copy(connectionStatus = it)
+            }
+        }
+        viewModelScope.launch {
+            sensorStreamingManager.startButtonStateFlow.sample(SENSOR_READ_DELAY).collect {
+                _state.value = _state.value.copy(startButtonState = it)
             }
         }
     }
