@@ -9,9 +9,9 @@ import com.example.sensorstream.*
 import com.example.sensorstream.databinding.SensorsReadoutsBinding
 import com.example.sensorstream.model.ConnectionStatus
 import com.example.sensorstream.model.SensorsData
+import com.example.sensorstream.model.StartButtonState
+import com.example.sensorstream.model.TransmissionState
 import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
-import com.example.sensorstream.viewmodel.StartButtonState
-import com.example.sensorstream.viewmodel.TransmissionState
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.core.component.KoinComponent

@@ -2,7 +2,7 @@ package com.example.sensorstream
 
 import com.example.sensorstream.model.ConnectionStatus
 import com.example.sensorstream.model.SensorsData
-import com.example.sensorstream.viewmodel.TransmissionState
+import com.example.sensorstream.model.TransmissionState
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*

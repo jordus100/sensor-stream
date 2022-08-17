@@ -1,11 +1,9 @@
 package com.example.sensorstream.model
 
 import com.example.sensorstream.SensorDataSender
-import com.example.sensorstream.viewmodel.StartButtonState
-import com.example.sensorstream.viewmodel.TransmissionState
-import com.example.sensorstream.viewstate.SensorsViewState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.sample
@@ -77,6 +75,7 @@ val state : StateFlow<SensorsViewState>
         }
     }
 
+    @OptIn(FlowPreview::class)
     private suspend fun updateStartButton(){
         state.sample(300L).collect{
             if(it.transmissionState == TransmissionState.OFF

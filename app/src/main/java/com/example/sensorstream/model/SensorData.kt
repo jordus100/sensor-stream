@@ -1,14 +1,5 @@
 package com.example.sensorstream.model
 
-import android.hardware.SensorManager
-
-enum class ConnectionStatus {
-    ESTABLISHED, NOT_ESTABLISHED
-}
-enum class StreamMode {
-    CONSTANT, ON_TOUCH
-}
-
 data class Point3F(val x: Float = 0.0f, val y: Float = 0.0f, val z: Float = 0.0f) {
     companion object {
         fun from(array: FloatArray) = Point3F(

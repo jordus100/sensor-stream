@@ -5,7 +5,8 @@ import androidx.lifecycle.*
 import com.example.sensorstream.SensorDataSender
 import com.example.sensorstream.model.SensorStreamingManager
 import com.example.sensorstream.model.*
-import com.example.sensorstream.viewstate.SensorsViewState
+import com.example.sensorstream.model.SensorsViewState
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -15,23 +16,17 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 const val SENSOR_READ_DELAY : Long = 1
-
-enum class TransmissionState {
-    ON, OFF
-}
-enum class StartButtonState {
-    START, STOP, INACTIVE
-}
-
 const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
 
+@OptIn(FlowPreview::class)
 class SensorsReadoutsViewModel (val sensorManager: SensorManager)
     : ViewModel(), KoinComponent {
 
     private val _state = MutableStateFlow(
         SensorsViewState(
             ConnectionStatus.NOT_ESTABLISHED, TransmissionState.OFF,
-            SensorsData(), StartButtonState.INACTIVE))
+            SensorsData(), StartButtonState.INACTIVE)
+    )
     val state : StateFlow<SensorsViewState>
         get() = _state
 
@@ -60,7 +55,7 @@ class SensorsReadoutsViewModel (val sensorManager: SensorManager)
             }
         }
         viewModelScope.launch {
-            sensorStreamingManager.startButtonStateFlow.sample(SENSOR_READ_DELAY).collect {
+            sensorStreamingManager.startButtonStateFlow.collect {
                 _state.value = _state.value.copy(startButtonState = it)
             }
         }
