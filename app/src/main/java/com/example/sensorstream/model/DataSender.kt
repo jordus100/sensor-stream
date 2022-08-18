@@ -15,8 +15,6 @@ import kotlinx.coroutines.sync.withLock
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import org.koin.core.parameter.parametersOf
-import java.time.LocalDateTime
-import kotlin.coroutines.coroutineContext
 
 interface SensorDataSender {
     val connectionStateFlow: MutableStateFlow<ConnectionStatus>
@@ -37,7 +35,7 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>)
     private val websocketConnection : WebsocketConnection = get() {
         parametersOf(connectionStateFlow, transmissionStateFlow)
     }
-    private val handler = CoroutineExceptionHandler { _, e ->
+    private val handler = CoroutineExceptionHandler { _, _ ->
         transmissionStateFlow.value = TransmissionState.OFF
         connectionStateFlow.value = ConnectionStatus.NOT_ESTABLISHED
         transmit()

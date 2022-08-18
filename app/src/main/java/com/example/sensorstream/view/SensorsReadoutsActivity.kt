@@ -3,24 +3,31 @@ package com.example.sensorstream.view
 import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.view.MotionEvent
 import androidx.lifecycle.*
 import com.example.sensorstream.*
 import com.example.sensorstream.databinding.SensorsReadoutsBinding
-import com.example.sensorstream.model.ConnectionStatus
-import com.example.sensorstream.model.SensorsData
-import com.example.sensorstream.model.StartButtonState
-import com.example.sensorstream.model.TransmissionState
+import com.example.sensorstream.model.*
 import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
+import org.koin.android.scope.AndroidScopeComponent
+import org.koin.androidx.scope.activityScope
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.parameter.parametersOf
+import org.koin.core.scope.Scope
 import java.text.DecimalFormat
 
 
 class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
-    private lateinit var sensorsViewModel: SensorsReadoutsViewModel
+
+    private val sensorsViewModel: SensorsReadoutsViewModel
+        by viewModel { parametersOf(sensorManager) }
     private lateinit var sensorManager: SensorManager
     private lateinit var uiBinding: SensorsReadoutsBinding
 
@@ -28,12 +35,16 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         super.onCreate(savedInstanceState)
         uiBinding = SensorsReadoutsBinding.inflate(layoutInflater)
         setContentView(uiBinding.root)
+        sensorManager = applicationContext.getSystemService(SENSOR_SERVICE) as SensorManager
     }
+
+    private lateinit var _uiEventsFlow : MutableSharedFlow<SensorsViewEvents>
 
     override fun onStart() {
         super.onStart()
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        sensorsViewModel = get { parametersOf(sensorManager) }
+        _uiEventsFlow = MutableSharedFlow(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        val uiEventsFlow = _uiEventsFlow.asSharedFlow()
+        sensorsViewModel.consumeUiEvents(uiEventsFlow)
         lifecycleScope.launch {
             sensorsViewModel.state.collect {
                 updateSensorsUI(it.sensorsData)
@@ -51,11 +62,11 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
             if(event.pointerCount == 1) {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        sensorsViewModel.screenPressed()
+                        _uiEventsFlow.tryEmit(SensorsViewEvents.ScreenPressed())
                         return@setOnTouchListener true
                     }
                     MotionEvent.ACTION_UP -> {
-                        sensorsViewModel.screenTouchReleased()
+                        _uiEventsFlow.tryEmit(SensorsViewEvents.ScreenReleased())
                         return@setOnTouchListener true
                     }
                     else -> return@setOnTouchListener false
@@ -65,11 +76,11 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         }
 
         uiBinding.startButton.setOnClickListener{ _ ->
-            sensorsViewModel.startButtonClicked()
+            _uiEventsFlow.tryEmit(SensorsViewEvents.StartButtonClicked())
         }
 
         uiBinding.streamModeCheckBox.setOnCheckedChangeListener{ _, isChecked ->
-            sensorsViewModel.streamModeCheckChanged(isChecked)
+            _uiEventsFlow.tryEmit(SensorsViewEvents.StreamModeCheckboxChanged(isChecked))
         }
     }
 

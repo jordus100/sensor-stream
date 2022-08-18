@@ -17,4 +17,5 @@ enum class StartButtonState {
 data class SensorsViewState(val connectionStatus: ConnectionStatus,
                             val transmissionState : TransmissionState,
                             val sensorsData: SensorsData,
-                            val startButtonState : StartButtonState)
+                            val startButtonState : StartButtonState,
+                            val streamMode: StreamMode)
