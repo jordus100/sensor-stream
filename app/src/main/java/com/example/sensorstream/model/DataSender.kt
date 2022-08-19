@@ -23,6 +23,7 @@ interface SensorDataSender {
 fun SensorsData.format() = "$accel $gyro"
 
 class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
+                        val externalScope: CoroutineScope,
                         val state : StateFlow<SensorsViewState>,
                         val transmissionStateUpdate : (TransmissionState) -> Unit,
                         val connectionStatusUpdate : (ConnectionStatus) -> Unit)
@@ -66,7 +67,7 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
     }
 
     private fun transmit() {
-        CoroutineScope(Dispatchers.Default).launch(handler) {
+        externalScope.launch(handler) {
             launch { sendData() }
             launch { receiveData() }
         }

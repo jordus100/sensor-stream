@@ -1,22 +1,20 @@
 package com.example.sensorstream.model
 
 import com.example.sensorstream.SensorDataSender
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
-class SensorStreamingManager(val sensorDataSender: SensorDataSender,
-                             val state : StateFlow<SensorsViewState>,
-                             val startButtonStateUpdate : (StartButtonState) -> Unit,
-                             val streamModeUpdate : (StreamMode) -> Unit) {
+class SensorStreamingManager(private val sensorDataSender: SensorDataSender,
+                             private val externalScope: CoroutineScope,
+                             private val state : StateFlow<SensorsViewState>,
+                             private val startButtonStateUpdate : (StartButtonState) -> Unit,
+                             private val streamModeUpdate : (StreamMode) -> Unit) {
 
     init {
-        CoroutineScope(Dispatchers.Default).launch{
+        externalScope.launch{
             updateStartButton()
         }
     }

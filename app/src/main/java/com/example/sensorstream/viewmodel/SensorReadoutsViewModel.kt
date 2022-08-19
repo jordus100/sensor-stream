@@ -11,9 +11,9 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.koin.core.parameter.parametersOf
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 import org.koin.core.component.inject
 import org.koin.core.qualifier.named
-import java.util.Objects.toString
 
 const val SENSOR_READ_DELAY : Long = 1
 const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
@@ -27,8 +27,8 @@ class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
         get() = _state
 
     private val sensorsDataSource: SensorsDataSource by inject { parametersOf(sensorManager) }
-    private val sensorDataSender: SensorDataSender by inject {
-        parametersOf(sensorsDataSource.sensorDataFlow, state,
+    private val sensorDataSender: SensorDataSender = get {
+        parametersOf(sensorsDataSource.sensorDataFlow, viewModelScope, state,
             { transmissionState : TransmissionState ->
                 _state.update { it.copy(transmissionState = transmissionState) } },
             { connectionStatus : ConnectionStatus ->
@@ -37,7 +37,7 @@ class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
     }
 
     private val sensorStreamingManager : SensorStreamingManager by inject {
-        parametersOf(sensorDataSender, _state,
+        parametersOf(sensorDataSender, viewModelScope, _state,
             { startButtonState : StartButtonState ->
             _state.update { it.copy(startButtonState = startButtonState) } },
             { streamMode : StreamMode ->
@@ -67,6 +67,10 @@ class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
                 }
             }
         }
+    }
+
+    override fun onCleared(){
+        println("WE ARE CLEARED")
     }
 
 }

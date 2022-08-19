@@ -23,11 +23,12 @@ val appModule = module {
     viewModel { params ->
             SensorsReadoutsViewModel(params.get(0)) }
     single<SensorStreamingManager> { params ->
-        SensorStreamingManager(params.get(0), params.get(1), params.get(2), params.get(3))
+        SensorStreamingManager(
+            params.get(0), params.get(1), params.get(2), params.get(3), params.get(4))
     }
     single<SensorsDataSource> { params -> SensorsDataSource(params.get()) }
     single<SensorDataSender> { params -> SocketDataSender(
-        params.get(0), params.get(1), params.get(2), params.get(3)) }
+        params.get(0), params.get(1), params.get(2), params.get(3), params.get(4)) }
     single<WebsocketConnection> { params ->
         WebsocketConnection(
             BuildConfig.WEBSOCKET_SERVER,
