@@ -23,10 +23,10 @@ interface SensorDataSender {
 fun SensorsData.format() = "$accel $gyro"
 
 class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
-                        val externalScope: CoroutineScope,
-                        val state : StateFlow<SensorsViewState>,
-                        val transmissionStateUpdate : (TransmissionState) -> Unit,
-                        val connectionStatusUpdate : (ConnectionStatus) -> Unit)
+                        private val externalScope: CoroutineScope,
+                        private val state : StateFlow<SensorsViewState>,
+                        private val transmissionStateUpdate : (TransmissionState) -> Unit,
+                        private val connectionStatusUpdate : (ConnectionStatus) -> Unit)
     : SensorDataSender, KoinComponent {
 
     override val receivedFlow = MutableStateFlow(String())
