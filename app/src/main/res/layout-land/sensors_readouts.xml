@@ -7,6 +7,7 @@
     android:layout_height="match_parent"
     app:flow_maxElementsWrap="1"
     app:flow_wrapMode="none"
+    app:layout_anchorGravity="center"
     app:layout_wrapBehaviorInParent="skipped">
 
     <Button
@@ -76,26 +77,27 @@
 
     <TextView
         android:id="@+id/textView"
-        android:layout_width="272dp"
+        android:layout_width="200dp"
         android:layout_height="37dp"
-        android:layout_marginEnd="16dp"
         android:gravity="center"
         android:text="Gyroscope"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="@+id/textView7"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/textView7"
+        app:layout_constraintHorizontal_bias="0.82"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/textView7" />
 
     <TextView
         android:id="@+id/textView7"
-        android:layout_width="315dp"
+        android:layout_width="200dp"
         android:layout_height="38dp"
         android:gravity="center"
         android:text="Accelerometer"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/textView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.18"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.348" />
