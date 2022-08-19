@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 
 class SensorStreamingManager(private val sensorDataSender: SensorDataSender,
-                             private val externalScope: CoroutineScope,
+                             externalScope: CoroutineScope,
                              private val state : StateFlow<SensorsViewState>,
                              private val startButtonStateUpdate : (StartButtonState) -> Unit,
                              private val streamModeUpdate : (StreamMode) -> Unit) {

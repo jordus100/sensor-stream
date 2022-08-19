@@ -69,10 +69,6 @@ class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
         }
     }
 
-    override fun onCleared(){
-        println("WE ARE CLEARED")
-    }
-
 }
 
 
