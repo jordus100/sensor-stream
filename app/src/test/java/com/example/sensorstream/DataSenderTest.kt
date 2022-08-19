@@ -1,7 +1,6 @@
 package com.example.sensorstream
 
 import com.example.sensorstream.model.*
-import com.example.sensorstream.viewmodel.TransmissionState
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -62,11 +62,11 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
             if(event.pointerCount == 1) {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        _uiEventsFlow.tryEmit(SensorsViewEvents.ScreenPressed())
+                        _uiEventsFlow.tryEmit(SensorsViewEvents.ScreenPressed)
                         return@setOnTouchListener true
                     }
                     MotionEvent.ACTION_UP -> {
-                        _uiEventsFlow.tryEmit(SensorsViewEvents.ScreenReleased())
+                        _uiEventsFlow.tryEmit(SensorsViewEvents.ScreenReleased)
                         return@setOnTouchListener true
                     }
                     else -> return@setOnTouchListener false
@@ -76,7 +76,7 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         }
 
         uiBinding.startButton.setOnClickListener{ _ ->
-            _uiEventsFlow.tryEmit(SensorsViewEvents.StartButtonClicked())
+            _uiEventsFlow.tryEmit(SensorsViewEvents.StartButtonClicked)
         }
 
         uiBinding.streamModeCheckBox.setOnCheckedChangeListener{ _, isChecked ->

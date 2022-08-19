@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import org.koin.core.parameter.parametersOf
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.koin.core.qualifier.named
 import java.util.Objects.toString
 
 const val SENSOR_READ_DELAY : Long = 1
@@ -21,36 +22,33 @@ const val SENSOR_DELAY = SensorManager.SENSOR_DELAY_FASTEST
 class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
     : ViewModel(), KoinComponent {
 
-    private val _state = MutableStateFlow(
-        SensorsViewState(
-            ConnectionStatus.NOT_ESTABLISHED, TransmissionState.OFF,
-            SensorsData(), StartButtonState.INACTIVE, DEFAULT_STREAM_MODE)
-    )
+    private val _state : MutableStateFlow<SensorsViewState> by inject(named("initialState"))
     val state : StateFlow<SensorsViewState>
         get() = _state
 
     private val sensorsDataSource: SensorsDataSource by inject { parametersOf(sensorManager) }
     private val sensorDataSender: SensorDataSender by inject {
-        parametersOf( sensorsDataSource.sensorDataFlow)
+        parametersOf(sensorsDataSource.sensorDataFlow, state,
+            { transmissionState : TransmissionState ->
+                _state.update { it.copy(transmissionState = transmissionState) } },
+            { connectionStatus : ConnectionStatus ->
+                _state.update { it.copy(connectionStatus = connectionStatus) }
+            })
     }
 
     private val sensorStreamingManager : SensorStreamingManager by inject {
-        parametersOf(sensorDataSender, _state) }
+        parametersOf(sensorDataSender, _state,
+            { startButtonState : StartButtonState ->
+            _state.update { it.copy(startButtonState = startButtonState) } },
+            { streamMode : StreamMode ->
+                _state.update { it.copy(streamMode = streamMode) }
+            })
+    }
 
     init {
         viewModelScope.launch {
             sensorsDataSource.sensorDataFlow.sample(SENSOR_READ_DELAY).collect { sensorsData ->
                 _state.update { _state.value.copy(sensorsData = sensorsData) }
-            }
-        }
-        viewModelScope.launch {
-            sensorDataSender.transmissionStateFlow.collect { transmissionState ->
-                _state.update { _state.value.copy(transmissionState = transmissionState) }
-            }
-        }
-        viewModelScope.launch {
-            sensorDataSender.connectionStateFlow.collect { connectionStatus ->
-                _state.update { _state.value.copy(connectionStatus = connectionStatus) }
             }
         }
     }

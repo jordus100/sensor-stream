@@ -10,8 +10,10 @@ import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class SensorStreamingManager(val sensorDataSender: SensorDataSender
-, val state : MutableStateFlow<SensorsViewState>) {
+class SensorStreamingManager(val sensorDataSender: SensorDataSender,
+                             val state : StateFlow<SensorsViewState>,
+                             val startButtonStateUpdate : (StartButtonState) -> Unit,
+                             val streamModeUpdate : (StreamMode) -> Unit) {
 
     init {
         CoroutineScope(Dispatchers.Default).launch{
@@ -34,11 +36,11 @@ class SensorStreamingManager(val sensorDataSender: SensorDataSender
             when (state.value.startButtonState) {
                 StartButtonState.START -> {
                     sensorDataSender.sendSensorData()
-                    state.update { state.value.copy(startButtonState = StartButtonState.STOP) }
+                    startButtonStateUpdate(StartButtonState.STOP)
                 }
                 StartButtonState.STOP -> {
                     sensorDataSender.pauseSendingData()
-                    state.update { state.value.copy(startButtonState = StartButtonState.START) }
+                    startButtonStateUpdate(StartButtonState.START)
                 }
                 else -> return
             }
@@ -62,13 +64,12 @@ class SensorStreamingManager(val sensorDataSender: SensorDataSender
     private fun changeStreamMode(newStreamMode: StreamMode){
         sensorDataSender.pauseSendingData()
         if(newStreamMode == StreamMode.CONSTANT){
-            println("STATE UPDATE")
-            state.update { state.value.copy(startButtonState = StartButtonState.START,
-                streamMode = StreamMode.CONSTANT) }
+            startButtonStateUpdate(StartButtonState.START)
+            streamModeUpdate(StreamMode.CONSTANT)
         }
         else{
-            state.update { state.value.copy(streamMode = StreamMode.ON_TOUCH,
-                startButtonState = StartButtonState.INACTIVE) }
+            startButtonStateUpdate(StartButtonState.INACTIVE)
+            streamModeUpdate(StreamMode.ON_TOUCH)
         }
     }
 
@@ -76,8 +77,11 @@ class SensorStreamingManager(val sensorDataSender: SensorDataSender
     private suspend fun updateStartButton(){
         state.sample(300L).collect{
             if(it.transmissionState == TransmissionState.OFF
+            && state.value.startButtonState != StartButtonState.INACTIVE)
+                startButtonStateUpdate(StartButtonState.START)
+            if(it.transmissionState == TransmissionState.ON
                 && state.value.startButtonState != StartButtonState.INACTIVE)
-                state.update { state.value.copy(startButtonState = StartButtonState.START) }
+                startButtonStateUpdate(StartButtonState.STOP)
         }
     }
 

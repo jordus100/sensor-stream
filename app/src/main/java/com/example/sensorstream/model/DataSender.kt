@@ -1,8 +1,6 @@
 package com.example.sensorstream
 
-import com.example.sensorstream.model.ConnectionStatus
-import com.example.sensorstream.model.SensorsData
-import com.example.sensorstream.model.TransmissionState
+import com.example.sensorstream.model.*
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
@@ -17,8 +15,6 @@ import org.koin.core.component.get
 import org.koin.core.parameter.parametersOf
 
 interface SensorDataSender {
-    val connectionStateFlow: MutableStateFlow<ConnectionStatus>
-    val transmissionStateFlow : MutableStateFlow<TransmissionState>
     val receivedFlow : MutableStateFlow<String>
     fun sendSensorData()
     fun pauseSendingData()
@@ -26,18 +22,19 @@ interface SensorDataSender {
 
 fun SensorsData.format() = "$accel $gyro"
 
-class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>)
+class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
+                        val state : StateFlow<SensorsViewState>,
+                        val transmissionStateUpdate : (TransmissionState) -> Unit,
+                        val connectionStatusUpdate : (ConnectionStatus) -> Unit)
     : SensorDataSender, KoinComponent {
 
-    override val connectionStateFlow = MutableStateFlow(ConnectionStatus.NOT_ESTABLISHED)
-    override val transmissionStateFlow = MutableStateFlow(TransmissionState.OFF)
     override val receivedFlow = MutableStateFlow(String())
     private val websocketConnection : WebsocketConnection = get() {
-        parametersOf(connectionStateFlow, transmissionStateFlow)
+        parametersOf(connectionStatusUpdate)
     }
     private val handler = CoroutineExceptionHandler { _, _ ->
-        transmissionStateFlow.value = TransmissionState.OFF
-        connectionStateFlow.value = ConnectionStatus.NOT_ESTABLISHED
+        transmissionStateUpdate(TransmissionState.OFF)
+        connectionStatusUpdate(ConnectionStatus.NOT_ESTABLISHED)
         transmit()
     }
     private var transmittingSensorDataNow = false
@@ -54,14 +51,14 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>)
     }.filter{!transmittingSensorDataNow}
 
     override fun sendSensorData() {
-        if(connectionStateFlow.value == ConnectionStatus.ESTABLISHED) {
+        if(state.value.connectionStatus == ConnectionStatus.ESTABLISHED) {
             transmittingSensorDataNow = true
         }
     }
 
     override fun pauseSendingData(){
         transmittingSensorDataNow = false
-        transmissionStateFlow.value = TransmissionState.OFF
+        transmissionStateUpdate(TransmissionState.OFF)
     }
 
     init {
@@ -84,7 +81,7 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>)
                 yield()
                 websocketConnection.getWebsocketConnection().send(it)
                 if(transmittingSensorDataNow)
-                    transmissionStateFlow.value = TransmissionState.ON
+                    transmissionStateUpdate(TransmissionState.ON)
             }
         }
         launch {
@@ -105,7 +102,6 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>)
                 val incomingTxt = incoming.await().readText()
                 receivedFlow.emit(incomingTxt)
                 println(incomingTxt)
-                coroutineContext.ensureActive()
             }
         }
     }
@@ -113,7 +109,7 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>)
 }
 
 open class WebsocketConnection(val host: String, val port: Int,
-                               val connectionState : MutableStateFlow<ConnectionStatus>){
+                               val connectionStatusUpdate : (ConnectionStatus) -> Unit){
 
     private val client = HttpClient {
         install(WebSockets){ }
@@ -132,7 +128,7 @@ open class WebsocketConnection(val host: String, val port: Int,
                         method = HttpMethod.Get, host,
                         port, path = ""
                     )
-                    connectionState.value = ConnectionStatus.ESTABLISHED
+                    connectionStatusUpdate(ConnectionStatus.ESTABLISHED)
                     return websocketConnection
                 } catch (e: Exception) {
                     throw e
