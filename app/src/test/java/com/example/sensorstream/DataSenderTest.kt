@@ -1,12 +1,10 @@
 package com.example.sensorstream
 
 import com.example.sensorstream.model.*
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
 import org.koin.core.context.GlobalContext.startKoin
@@ -14,27 +12,36 @@ import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.junit.Before
 import org.koin.core.context.GlobalContext.stopKoin
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import org.koin.test.get
 import org.koin.test.inject
 import kotlin.test.assertEquals
 
-val testModule = module {
-    single<SensorDataSender> { params -> SocketDataSender(params.get(0)) }
-    single<WebsocketConnection> { params -> WebsocketConnection(BuildConfig.WEBSOCKET_SERVER,
-        BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0))}
-}
 val testSensorFlow = MutableStateFlow(SensorsData())
 
 
 open class SensorDataSenderTest : KoinTest {
 
-    val sensorDataSender : SensorDataSender by inject{ parametersOf(testSensorFlow) }
+    val state : MutableStateFlow<SensorsViewState> by inject(named("initialState"))
+    val sensorDataSender : SensorDataSender by inject { parametersOf(
+        testSensorFlow,
+        CoroutineScope(Dispatchers.Default),
+        state,
+        {
+            testState : TransmissionState ->
+            state.update { state.value.copy(transmissionState = testState) }
+        },
+        {
+            testState : ConnectionStatus ->
+            state.update { state.value.copy(connectionStatus = testState) }
+        }) }
 
 
     @Before
     fun setUp() {
         startKoin {
-            modules(testModule)
+            modules(appModule)
         }
     }
 
@@ -45,22 +52,30 @@ open class SensorDataSenderTest : KoinTest {
 
     @Test fun socketConnectionControlTest(){
         runBlocking {
-            assertEquals(TransmissionState.OFF, sensorDataSender.transmissionStateFlow.value)
-            val connectionJob = launch {sensorDataSender.sendSensorData() }
-            delay(3000)
-            assertEquals(TransmissionState.ON, sensorDataSender.transmissionStateFlow.value)
+            sensorDataSender.sendSensorData()
+            delay(5000)
+            sensorDataSender.sendSensorData()
+            testSensorFlow.update {
+                it.copy(
+                    Point3F(0.1f, 0.0f, 0.0f),
+                    Point3F(0.1f, 0.0f, 0.0f)
+                )
+            }
+            delay(1000)
+            assertEquals(TransmissionState.ON, state.value.transmissionState)
             sensorDataSender.pauseSendingData()
             delay(1000)
-            assertEquals(TransmissionState.OFF, sensorDataSender.transmissionStateFlow.value)
-            connectionJob.cancelAndJoin()
+            assertEquals(TransmissionState.OFF, state.value.transmissionState)
         }
     }
 
     @Test fun socketDataTransmittingTest(){
         runBlocking {
-            launch { sensorDataSender.sendSensorData() }
+            sensorDataSender.sendSensorData()
+            delay(5000)
+            sensorDataSender.sendSensorData()
+            var counter = 0
             val collectJob = launch {
-                var counter = 0
                 sensorDataSender.receivedFlow.collect {
                     if(counter == 2)
                         assertEquals(expected = "[0.0; 0.0; 0.0] [0.0; 0.0; 0.0]", actual = it)
@@ -70,11 +85,12 @@ open class SensorDataSenderTest : KoinTest {
             }
             testSensorFlow.update {
                 it.copy(
-                    Point3F(0.0f, 0.0f, 0.0f),
-                    Point3F(0.0f, 0.0f, 0.0f)
+                    Point3F(0.1f, 0.0f, 0.0f),
+                    Point3F(0.1f, 0.0f, 0.0f)
                 )
             }
             delay(3000)
+            assertEquals(expected = 2, actual = counter)
             sensorDataSender.pauseSendingData()
             collectJob.cancelAndJoin()
         }
