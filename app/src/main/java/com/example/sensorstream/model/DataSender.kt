@@ -22,7 +22,7 @@ interface SensorDataSender {
 
 fun SensorsData.format() = "$accel $gyro"
 
-class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
+class SocketDataSender (sensorMutableDataFlow: StateFlow<SensorsData>,
                         private val externalScope: CoroutineScope,
                         private val state : StateFlow<SensorsViewState>,
                         private val transmissionStateUpdate : (TransmissionState) -> Unit,
@@ -34,13 +34,14 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
         parametersOf(connectionStatusUpdate)
     }
     private val handler = CoroutineExceptionHandler { _, _ ->
+        transmissionActive = false
         transmissionStateUpdate(TransmissionState.OFF)
         connectionStatusUpdate(ConnectionStatus.NOT_ESTABLISHED)
         transmit()
     }
-    private var transmittingSensorDataNow = false
+    private var transmissionActive = false
     private val sensorDataFlow = sensorMutableDataFlow
-        .filter{transmittingSensorDataNow}
+        .filter{ transmissionActive }
         .map{ it.format() }
         .buffer( 64, BufferOverflow.DROP_LATEST)
 
@@ -49,16 +50,16 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
             delay(200)
             emit("")
         }
-    }.filter{!transmittingSensorDataNow}
+    }.filter{!transmissionActive}
 
     override fun sendSensorData() {
         if(state.value.connectionStatus == ConnectionStatus.ESTABLISHED) {
-            transmittingSensorDataNow = true
+            transmissionActive = true
         }
     }
 
     override fun pauseSendingData(){
-        transmittingSensorDataNow = false
+        transmissionActive = false
         transmissionStateUpdate(TransmissionState.OFF)
     }
 
@@ -77,19 +78,20 @@ class SocketDataSender (sensorMutableDataFlow: MutableStateFlow<SensorsData>,
     fun CoroutineScope.sendData() {
         launch {
             sensorDataFlow.sample(1L)
-            .filter{transmittingSensorDataNow}
+            .filter{ transmissionActive }
             .collect {
                 yield()
                 websocketConnection.getWebsocketConnection().send(it)
-                if(transmittingSensorDataNow)
+                if(transmissionActive)
                     transmissionStateUpdate(TransmissionState.ON)
             }
         }
         launch {
-            connectionSustainer.sample(1L).filter{!transmittingSensorDataNow}.collect {
+            connectionSustainer.sample(1L).filter{!transmissionActive}.collect {
                 yield()
-                if(!transmittingSensorDataNow)
+                if( !transmissionActive ) {
                     websocketConnection.getWebsocketConnection().send(it)
+                }
             }
         }
     }
