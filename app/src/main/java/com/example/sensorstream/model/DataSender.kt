@@ -15,21 +15,24 @@ import org.koin.core.component.get
 import org.koin.core.parameter.parametersOf
 
 interface SensorDataSender {
-    val receivedFlow : MutableStateFlow<String>
+    val receivedFlow : StateFlow<String>
     fun sendSensorData()
     fun pauseSendingData()
 }
 
 fun SensorsData.format() = "$accel $gyro"
 
-class SocketDataSender (sensorMutableDataFlow: StateFlow<SensorsData>,
+class SocketDataSender (sensorDataFlow: StateFlow<SensorsData>,
                         private val externalScope: CoroutineScope,
                         private val state : StateFlow<SensorsViewState>,
                         private val transmissionStateUpdate : (TransmissionState) -> Unit,
                         private val connectionStatusUpdate : (ConnectionStatus) -> Unit)
     : SensorDataSender, KoinComponent {
 
-    override val receivedFlow = MutableStateFlow(String())
+    override val receivedFlow : StateFlow<String>
+        get() = _receivedFlow
+    private val _receivedFlow = MutableStateFlow(String())
+
     private val websocketConnection : WebsocketConnection = get() {
         parametersOf(connectionStatusUpdate)
     }
@@ -40,15 +43,16 @@ class SocketDataSender (sensorMutableDataFlow: StateFlow<SensorsData>,
         transmit()
     }
     private var transmissionActive = false
-    private val sensorDataFlow = sensorMutableDataFlow
+    private val sensorDataFlowTransformed = sensorDataFlow
         .filter{ transmissionActive }
         .map{ it.format() }
         .buffer( 64, BufferOverflow.DROP_LATEST)
 
+    private var pingMessage = ""
     private val connectionSustainer = flow {
         while(true){
             delay(200)
-            emit("")
+            emit(pingMessage)
         }
     }.filter{!transmissionActive}
 
@@ -77,7 +81,7 @@ class SocketDataSender (sensorMutableDataFlow: StateFlow<SensorsData>,
     @OptIn(FlowPreview::class)
     fun CoroutineScope.sendData() {
         launch {
-            sensorDataFlow.sample(1L)
+            sensorDataFlowTransformed.sample(1L)
             .filter{ transmissionActive }
             .collect {
                 yield()
@@ -103,8 +107,10 @@ class SocketDataSender (sensorMutableDataFlow: StateFlow<SensorsData>,
                     websocketConnection.getWebsocketConnection().incoming.receive() as Frame.Text
                 }
                 val incomingTxt = incoming.await().readText()
-                receivedFlow.emit(incomingTxt)
-                println(incomingTxt)
+                if(incomingTxt != pingMessage) {
+                    _receivedFlow.emit(incomingTxt)
+                    println(incomingTxt)
+                }
             }
         }
     }

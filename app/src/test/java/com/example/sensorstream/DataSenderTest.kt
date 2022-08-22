@@ -73,27 +73,34 @@ open class SensorDataSenderTest : KoinTest {
         runBlocking {
             sensorDataSender.sendSensorData()
             delay(5000)
-            sensorDataSender.sendSensorData()
-            var counter = 0
-            val collectJob = launch {
-                sensorDataSender.receivedFlow.collect {
-                    if(counter == 2)
-                        assertEquals(expected = "[0.0; 0.0; 0.0] [0.0; 0.0; 0.0]", actual = it)
-                    else
-                        counter++
-                }
-            }
-            testSensorFlow.update {
-                it.copy(
-                    Point3F(0.1f, 0.0f, 0.0f),
-                    Point3F(0.1f, 0.0f, 0.0f)
-                )
-            }
-            delay(3000)
-            assertEquals(expected = 2, actual = counter)
-            sensorDataSender.pauseSendingData()
-            collectJob.cancelAndJoin()
+            testDataTransmit(1)
+            testDataTransmit(0)
         }
+    }
+
+    private fun CoroutineScope.testDataTransmit(messageCounter : Int){
+        sensorDataSender.sendSensorData()
+        var counter = 0
+        var message = ""
+        val collectJob = launch {
+            sensorDataSender.receivedFlow.collect {
+                if (counter == messageCounter)
+                    message = it
+                else
+                    counter++
+            }
+        }
+        testSensorFlow.update {
+            it.copy(
+                Point3F(0.1f, 0.0f, 0.0f),
+                Point3F(0.1f, 0.0f, 0.0f)
+            )
+        }
+        runBlocking {  delay(2000) }
+        assertEquals(expected = "[0.1; 0.0; 0.0] [0.1; 0.0; 0.0]", actual = message)
+        assertEquals(messageCounter, counter)
+        sensorDataSender.pauseSendingData()
+        runBlocking { collectJob.cancelAndJoin() }
     }
 
 }
