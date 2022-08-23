@@ -3,8 +3,10 @@ package com.example.sensorstream
 import com.example.sensorstream.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -43,6 +45,7 @@ class SensorStreamingManagerTest : KoinTest, KoinComponent{
         GlobalContext.startKoin {
             modules(appModule)
         }
+
     }
 
     @After
@@ -71,4 +74,16 @@ class SensorStreamingManagerTest : KoinTest, KoinComponent{
         verify(mockSensorDataSender, times(1)).pauseSendingData()
     }
 
+    @Test
+    fun updateStartButtonTest(){
+        state.update { state.value.copy(
+            streamMode = StreamMode.CONSTANT, startButtonState = StartButtonState.START) }
+        sensorStreamingManager.startButtonClicked()
+        state.update { state.value.copy(transmissionState = TransmissionState.ON) }
+        runBlocking { delay(2000) }
+        assertEquals(expected = StartButtonState.STOP, actual = state.value.startButtonState)
+        state.update { state.value.copy(transmissionState = TransmissionState.OFF) }
+        runBlocking { delay(500) }
+        assertEquals(expected = StartButtonState.START, actual = state.value.startButtonState)
+    }
 }

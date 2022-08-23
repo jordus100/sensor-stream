@@ -73,13 +73,12 @@ class SensorStreamingManager(private val sensorDataSender: SensorDataSender,
 
     @OptIn(FlowPreview::class)
     private suspend fun updateStartButton(){
+        var lastTransmissionState : TransmissionState? = null
         state.sample(300L).collect{
             if(it.transmissionState == TransmissionState.OFF
-            && state.value.startButtonState != StartButtonState.INACTIVE)
+            && state.value.startButtonState != StartButtonState.INACTIVE
+            && lastTransmissionState != it.transmissionState)
                 startButtonStateUpdate(StartButtonState.START)
-            if(it.transmissionState == TransmissionState.ON
-                && state.value.startButtonState != StartButtonState.INACTIVE)
-                startButtonStateUpdate(StartButtonState.STOP)
         }
     }
 
