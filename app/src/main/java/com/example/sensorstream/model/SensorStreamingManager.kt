@@ -1,11 +1,8 @@
 package com.example.sensorstream.model
 
-import com.example.sensorstream.SensorDataSender
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.sample
-import kotlinx.coroutines.flow.update
 
 class SensorStreamingManager(private val sensorDataSender: SensorDataSender,
                              externalScope: CoroutineScope,
@@ -79,6 +76,7 @@ class SensorStreamingManager(private val sensorDataSender: SensorDataSender,
             && state.value.startButtonState != StartButtonState.INACTIVE
             && lastTransmissionState != it.transmissionState)
                 startButtonStateUpdate(StartButtonState.START)
+            lastTransmissionState = it.transmissionState
         }
     }
 

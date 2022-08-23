@@ -4,7 +4,6 @@ import com.example.sensorstream.model.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
 import org.koin.core.context.GlobalContext.startKoin
@@ -13,8 +12,6 @@ import org.koin.test.KoinTest
 import org.junit.Before
 import org.koin.core.context.GlobalContext.stopKoin
 import org.koin.core.qualifier.named
-import org.koin.dsl.module
-import org.koin.test.get
 import org.koin.test.inject
 import kotlin.test.assertEquals
 

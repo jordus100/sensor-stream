@@ -2,10 +2,11 @@ package com.example.sensorstream.viewmodel
 
 import android.hardware.SensorManager
 import androidx.lifecycle.*
-import com.example.sensorstream.SensorDataSender
+import com.example.sensorstream.model.SensorDataSender
 import com.example.sensorstream.model.SensorStreamingManager
 import com.example.sensorstream.model.*
 import com.example.sensorstream.model.SensorsViewState
+import com.example.sensorstream.view.SensorsViewEvents
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

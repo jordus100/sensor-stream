@@ -1,4 +1,4 @@
-package com.example.sensorstream.model
+package com.example.sensorstream.view
 
 sealed class SensorsViewEvents(){
     object ScreenPressed : SensorsViewEvents()

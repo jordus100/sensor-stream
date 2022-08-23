@@ -2,7 +2,6 @@ package com.example.sensorstream.model
 
 import android.app.Application
 import com.example.sensorstream.*
-import com.example.sensorstream.view.SensorsReadoutsActivity
 import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.android.ext.koin.androidContext

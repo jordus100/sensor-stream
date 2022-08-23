@@ -1,6 +1,5 @@
-package com.example.sensorstream
+package com.example.sensorstream.model
 
-import com.example.sensorstream.model.*
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
@@ -117,7 +116,7 @@ class SocketDataSender (sensorDataFlow: StateFlow<SensorsData>,
 
 }
 
-open class WebsocketConnection(val host: String, val port: Int,
+open class WebsocketConnection(private val host: String, private val port: Int,
                                val connectionStatusUpdate : (ConnectionStatus) -> Unit){
 
     private val client = HttpClient {

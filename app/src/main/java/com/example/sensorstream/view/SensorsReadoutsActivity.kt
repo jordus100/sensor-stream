@@ -3,7 +3,6 @@ package com.example.sensorstream.view
 import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.view.MotionEvent
 import androidx.lifecycle.*
 import com.example.sensorstream.*
@@ -14,13 +13,9 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import org.koin.android.ext.android.get
-import org.koin.android.scope.AndroidScopeComponent
-import org.koin.androidx.scope.activityScope
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.parameter.parametersOf
-import org.koin.core.scope.Scope
 import java.text.DecimalFormat
 
 
@@ -111,7 +106,7 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         }
     }
 
-    fun updateStartButton(startButtonState: StartButtonState){
+    private fun updateStartButton(startButtonState: StartButtonState){
         when(startButtonState){
             StartButtonState.START -> {
                 uiBinding.startButton.isEnabled = true
