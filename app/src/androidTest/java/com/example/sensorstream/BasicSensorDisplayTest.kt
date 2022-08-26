@@ -10,6 +10,7 @@ import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
+import com.example.sensorstream.view.SensorsReadoutsActivity
 import org.hamcrest.Description
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers.allOf
@@ -25,7 +26,7 @@ class BasicSensorDisplayTest {
 
     @Rule
     @JvmField
-    var mActivityScenarioRule = ActivityScenarioRule(MainActivity::class.java)
+    var mActivityScenarioRule = ActivityScenarioRule(SensorsReadoutsActivity::class.java)
 
     @Test
     fun basicSensorDisplayTest() {

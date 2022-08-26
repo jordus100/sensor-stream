@@ -71,5 +71,3 @@ class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
     }
 
 }
-
-

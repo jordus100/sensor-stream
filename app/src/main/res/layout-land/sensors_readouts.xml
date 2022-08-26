@@ -12,16 +12,15 @@
 
     <Button
         android:id="@+id/startButton"
-        android:layout_width="332dp"
-        android:layout_height="57dp"
+        android:layout_width="205dp"
+        android:layout_height="62dp"
         android:layout_marginBottom="8dp"
         android:onClick="onStartBtnClicked"
         android:text="START"
         android:textSize="34sp"
         app:layout_constraintBottom_toTopOf="@+id/transmissionStatusText"
-        app:layout_constraintEnd_toEndOf="@+id/gyroZ"
-        app:layout_constraintHorizontal_bias="0.487"
-        app:layout_constraintStart_toStartOf="@+id/accelZ" />
+        app:layout_constraintEnd_toStartOf="@+id/gyroZ"
+        app:layout_constraintStart_toEndOf="@+id/accelZ" />
 
     <CheckBox
         android:id="@+id/streamModeCheckBox"

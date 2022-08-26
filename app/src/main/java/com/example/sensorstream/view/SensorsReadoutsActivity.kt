@@ -91,18 +91,18 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
     }
     private fun updateConnectionStatusUI(connection : ConnectionStatus){
         when(connection){
-            ConnectionStatus.ESTABLISHED -> uiBinding.statusText.text = getString(
-                R.string.connection_good)
-            ConnectionStatus.NOT_ESTABLISHED -> uiBinding.statusText.text = getString(
-                R.string.connection_bad)
+            ConnectionStatus.ESTABLISHED -> uiBinding.statusText.text =
+                getString(R.string.connection_good)
+            ConnectionStatus.NOT_ESTABLISHED -> uiBinding.statusText.text =
+                getString(R.string.connection_bad)
         }
     }
     private fun updateTransmissionStateStatusUI(transmissionState : TransmissionState){
         when(transmissionState){
-            TransmissionState.ON -> uiBinding.transmissionStatusText.text = getString(
-                R.string.transmission_status_on)
-            TransmissionState.OFF -> uiBinding.transmissionStatusText.text = getString(
-                R.string.transmission_status_off)
+            TransmissionState.ON -> uiBinding.transmissionStatusText.text =
+                getString(R.string.transmission_status_on)
+            TransmissionState.OFF -> uiBinding.transmissionStatusText.text =
+                getString(R.string.transmission_status_off)
         }
     }
 
