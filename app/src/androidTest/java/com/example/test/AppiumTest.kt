@@ -58,7 +58,6 @@ class AppiumTest {
     @AfterTest
     fun tearDown() {
         driver.setConnection(ConnectionState(6))
-        println("stop the count")
         driver.quit()
     }
 
