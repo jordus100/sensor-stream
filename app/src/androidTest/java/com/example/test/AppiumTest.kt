@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.openqa.selenium.By
+import org.openqa.selenium.WebDriver
 import org.openqa.selenium.WebElement
 import org.openqa.selenium.devtools.v85.input.model.MouseButton
 import org.openqa.selenium.interactions.PointerInput
@@ -52,21 +53,31 @@ class AppiumTest {
         val remoteUrl = URL(APPIUM_SERVER_URL) //this is standard Appium http server config
         driver = AndroidDriver(remoteUrl, desiredCapabilities)
         driver.setSetting(Setting.WAIT_FOR_IDLE_TIMEOUT, 100)
-        driver.setConnection(ConnectionState(6))
+        driver.connection = ConnectionState(6)
     }
 
     @Test
-    fun connectionStatusDisplay() { // the device needs to have only wifi internet connection
+    fun sensorsReadoutsTest(){
+        val gyroX = driver.findElement(By.id("gyroX"))
+        val accelX = driver.findElement(By.id("accelX"))
+        val gyroTxt = gyroX.text
+        val accelTxt = accelX.text
+        var wait = WebDriverWait(driver, Duration.ofMillis(200))
+        wait.until { gyroX.text != gyroTxt && accelX.text != accelTxt }
+    }
+
+    @Test
+    fun connectionStatusDisplayTest() { // the device needs to have only wifi internet connection
         var wait = WebDriverWait(driver, Duration.ofSeconds(8))
         wait.until(ExpectedConditions.textToBe(By.id("statusText"),
             driver.appStringMap.get("connection_good")))
 
-        driver.setConnection(ConnectionState(0))
+        driver.connection = ConnectionState(0)
         wait = WebDriverWait(driver, Duration.ofSeconds(2))
         wait.until(ExpectedConditions.textToBe(By.id("statusText"),
             driver.appStringMap.get("connection_bad")))
 
-        driver.setConnection(ConnectionState(6))
+        driver.connection = ConnectionState(6)
         wait = WebDriverWait(driver, Duration.ofSeconds(30))
         wait.until(ExpectedConditions.textToBe(By.id("statusText"),
             driver.appStringMap.get("connection_good")))
@@ -75,12 +86,12 @@ class AppiumTest {
     val finger = PointerInput(PointerInput.Kind.TOUCH, "finger")
 
     @Test
-    fun transmissionTouchControl(){
+    fun transmissionTouchControlTest(){
         var wait = WebDriverWait(driver, Duration.ofSeconds(8))
         wait.until(ExpectedConditions.textToBe(By.id("statusText"),
             driver.appStringMap.get("connection_good")))
 
-        var element = driver.findElement(By.id("transmissionStatusText"))
+        val element = driver.findElement(By.id("transmissionStatusText"))
         if(element.text != driver.appStringMap.get("transmission_status_off")) throw AssertionError()
 
         driver.performTouch(element.rect.x, element.rect.y, TouchActionType.DOWN)
@@ -107,6 +118,7 @@ class AppiumTest {
         }
         perform(listOf(touchSequence))
     }
+
 
     @AfterTest
     fun tearDown() {
