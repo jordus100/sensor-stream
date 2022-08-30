@@ -2,17 +2,31 @@ package com.example.test
 
 import io.appium.java_client.android.connection.ConnectionState
 import org.openqa.selenium.By
+import org.openqa.selenium.WebElement
 import org.openqa.selenium.interactions.PointerInput
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
+import org.testng.annotations.BeforeTest
 import org.testng.annotations.Test
 import java.time.Duration
 
-class AppiumSensorsReadoutsActivityTests : AppiumTest() {
+class AppiumSensorsReadoutsActivityTests : ParallelAppiumTest() {
+
+    private lateinit var startBtn : WebElement
+    private lateinit var transmissionTxt : WebElement
+    private lateinit var gyroX : WebElement
+    private lateinit var accelX : WebElement
+
+    @BeforeTest
+    fun activitySetUp(){
+        startBtn = driver.findElement(By.id("startButton"))
+        transmissionTxt = driver.findElement(By.id("transmissionStatusText"))
+        gyroX = driver.findElement(By.id("gyroX"))
+        accelX = driver.findElement(By.id("accelX"))
+    }
+
     @Test
     fun sensorsReadoutsTest(){
-        val gyroX = driver.findElement(By.id("gyroX"))
-        val accelX = driver.findElement(By.id("accelX"))
         val gyroTxt = gyroX.text
         val accelTxt = accelX.text
         var wait = WebDriverWait(driver, Duration.ofMillis(500))
@@ -24,24 +38,21 @@ class AppiumSensorsReadoutsActivityTests : AppiumTest() {
     fun connectionStatusDisplayTest() { // the device needs to have only wifi internet connection
         var wait = WebDriverWait(driver, Duration.ofSeconds(8))
         wait.until(
-            ExpectedConditions.textToBe(
-                By.id("statusText"),
+            ExpectedConditions.textToBe(By.id("statusText"),
             driver.getAppString("connection_good")
         ))
 
         driver.connection = ConnectionState(0)
         wait = WebDriverWait(driver, Duration.ofSeconds(2))
         wait.until(
-            ExpectedConditions.textToBe(
-                By.id("statusText"),
-            driver.getAppString("connection_bad")
+            ExpectedConditions.textToBe(By.id("statusText"),
+                driver.getAppString("connection_bad")
         ))
 
         driver.connection = ConnectionState(6)
         wait = WebDriverWait(driver, Duration.ofSeconds(30))
         wait.until(
-            ExpectedConditions.textToBe(
-                By.id("statusText"),
+            ExpectedConditions.textToBe(By.id("statusText"),
             driver.getAppString("connection_good")
         ))
     }
@@ -56,18 +67,17 @@ class AppiumSensorsReadoutsActivityTests : AppiumTest() {
             driver.getAppString("connection_good")
         ))
 
-        val element = driver.findElement(By.id("transmissionStatusText"))
-        if(element.text != driver.getAppString("transmission_status_off"))
+        if(transmissionTxt.text != driver.getAppString("transmission_status_off"))
             throw AssertionError()
 
-        driver.performTouch(element.rect.x, element.rect.y, TouchActionType.DOWN)
+        driver.performTouch(transmissionTxt.rect.x, transmissionTxt.rect.y, TouchActionType.DOWN)
         wait = WebDriverWait(driver, Duration.ofSeconds(3))
         wait.until(
             ExpectedConditions.textToBe(
                 By.id("transmissionStatusText"),
             driver.getAppString("transmission_status_on")
         ))
-        driver.performTouch(element.rect.x, element.rect.y, TouchActionType.RELEASE)
+        driver.performTouch(transmissionTxt.rect.x, transmissionTxt.rect.y, TouchActionType.RELEASE)
         wait.until(
             ExpectedConditions.textToBe(
                 By.id("transmissionStatusText"),
@@ -75,7 +85,7 @@ class AppiumSensorsReadoutsActivityTests : AppiumTest() {
         ))
     }
 
-    @Test(groups = ["onButton"], dependsOnGroups = ["onTouch"])
+    @Test(dependsOnGroups = ["onTouch"])
     fun streamModeChangeTest(){
         var wait = WebDriverWait(driver, Duration.ofSeconds(8))
         wait.until(
@@ -83,8 +93,6 @@ class AppiumSensorsReadoutsActivityTests : AppiumTest() {
                 By.id("statusText"),
             driver.getAppString("connection_good")
         ))
-        val startBtn = driver.findElement(By.id("startButton"))
-        val transmissionTxt = driver.findElement(By.id("transmissionStatusText"))
         if(startBtn.text != driver.getAppString("start")) throw AssertionError()
 
         startBtn.click() //checking if on button toggle streaming mode is disabled

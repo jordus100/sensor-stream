@@ -1,0 +1,23 @@
+<suite name="Test-class Suite" parallel="tests" thread-count="2">
+    <test name="Local device">
+        <parameter name="deviceUID" value="ZY227MRS44" />
+        <parameter name="systemPort" value="8201" />
+        <classes>
+            <class name="com.example.test.AppiumSensorsReadoutsActivityTests" />
+        </classes>
+    </test>
+    <test name="Smartdust device">
+        <parameter name="deviceUID" value="public.smartdust.me:13970" />
+        <parameter name="systemPort" value="8202" />
+        <classes>
+            <class name="com.example.test.AppiumSensorsReadoutsActivityTests" />
+        </classes>
+    </test>
+    <test name="Smartdust device #2">
+        <parameter name="deviceUID" value="public.smartdust.me:11981" />
+        <parameter name="systemPort" value="8203" />
+        <classes>
+            <class name="com.example.test.AppiumSensorsReadoutsActivityTests" />
+        </classes>
+    </test>
+</suite>
