@@ -12,11 +12,9 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val DEFAULT_STREAM_MODE = StreamMode.ON_TOUCH
-val initialState = MutableStateFlow(
-    SensorsViewState(
+val initialState = MutableStateFlow( SensorsViewState(
         ConnectionStatus.NOT_ESTABLISHED, TransmissionState.OFF,
-        SensorsData(), StartButtonState.INACTIVE, DEFAULT_STREAM_MODE)
-)
+        SensorsData(), StartButtonState.INACTIVE, DEFAULT_STREAM_MODE))
 
 val appModule = module {
     viewModel { params ->
@@ -25,13 +23,15 @@ val appModule = module {
         SensorStreamingManager(
             params.get(0), params.get(1), params.get(2), params.get(3), params.get(4))
     }
-    single<SensorsDataSource> { params -> SensorsDataSource(params.get()) }
+    single<SensorsDataSource> { params -> SensorsDataSource(
+        params.get(0), params.get(1), params.get(2), params.get(3)) }
+    single<SensorDataManipulator> { params -> SensorDataManipulator(params.get(0), params.get(1)) }
     single<SensorDataSender> { params -> SocketDataSender(
         params.get(0), params.get(1), params.get(2), params.get(3), params.get(4)) }
     single<WebsocketConnection> { params ->
         WebsocketConnection(
             BuildConfig.WEBSOCKET_SERVER,
-            BuildConfig.WEBSOCKET_SERVER_PORT, params.get(0)
+            BuildConfig.WEBSOCKET_SERVER_PORT, BuildConfig.WEBSOCKET_PATH, params.get(0)
         )
     }
     single(named("initialState")){ initialState }

@@ -1,6 +1,8 @@
 package com.example.sensorstream.model
 
+import android.hardware.SensorManager
 import io.ktor.client.*
+import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.websocket.*
@@ -19,9 +21,8 @@ interface SensorDataSender {
     fun pauseSendingData()
 }
 
-fun SensorsData.format() = "$accel $gyro"
 
-class SocketDataSender (sensorDataFlow: StateFlow<SensorsData>,
+class SocketDataSender (formatSensorData : (SensorsData) -> String,
                         private val externalScope: CoroutineScope,
                         private val state : StateFlow<SensorsViewState>,
                         private val transmissionStateUpdate : (TransmissionState) -> Unit,
@@ -42,15 +43,15 @@ class SocketDataSender (sensorDataFlow: StateFlow<SensorsData>,
         transmit()
     }
     private var transmissionActive = false
-    private val sensorDataFlowTransformed = sensorDataFlow
+    private val sensorDataFlowTransformed = state
         .filter{ transmissionActive }
-        .map{ it.format() }
+        .map{ formatSensorData(it.sensorsData) }
         .buffer( 64, BufferOverflow.DROP_LATEST)
 
     private var pingMessage = ""
     private val connectionSustainer = flow {
         while(true){
-            delay(200)
+            delay(1000)
             emit(pingMessage)
         }
     }.filter{!transmissionActive}
@@ -90,7 +91,7 @@ class SocketDataSender (sensorDataFlow: StateFlow<SensorsData>,
             }
         }
         launch {
-            connectionSustainer.sample(1L).filter{!transmissionActive}.collect {
+            connectionSustainer.filter{!transmissionActive}.collect {
                 yield()
                 if( !transmissionActive ) {
                     websocketConnection.getWebsocketConnection().send(it)
@@ -117,9 +118,10 @@ class SocketDataSender (sensorDataFlow: StateFlow<SensorsData>,
 }
 
 open class WebsocketConnection(private val host: String, private val port: Int,
+                               private val path : String,
                                val connectionStatusUpdate : (ConnectionStatus) -> Unit){
 
-    private val client = HttpClient {
+    private val client = HttpClient(CIO) {
         install(WebSockets){ }
     }
     private lateinit var websocketConnection: DefaultClientWebSocketSession
@@ -134,11 +136,12 @@ open class WebsocketConnection(private val host: String, private val port: Int,
                 try {
                     websocketConnection = client.webSocketSession(
                         method = HttpMethod.Get, host,
-                        port, path = ""
+                        port, path = path
                     )
                     connectionStatusUpdate(ConnectionStatus.ESTABLISHED)
                     return websocketConnection
                 } catch (e: Exception) {
+                    e.printStackTrace()
                     throw e
                 }
             } else return websocketConnection

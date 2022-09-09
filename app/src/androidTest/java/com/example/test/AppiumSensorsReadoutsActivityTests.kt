@@ -3,7 +3,6 @@ package com.example.test
 import io.appium.java_client.android.connection.ConnectionState
 import org.openqa.selenium.By
 import org.openqa.selenium.WebElement
-import org.openqa.selenium.interactions.PointerInput
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
 import org.testng.annotations.BeforeTest
@@ -29,7 +28,7 @@ class AppiumSensorsReadoutsActivityTests : ParallelAppiumTest() {
     fun sensorsReadoutsTest(){
         val gyroTxt = gyroX.text
         val accelTxt = accelX.text
-        var wait = WebDriverWait(driver, Duration.ofMillis(500))
+        var wait = WebDriverWait(driver, Duration.ofMillis(1000))
         wait.pollingEvery(Duration.ofMillis(5))
         wait.until { (gyroX.text != gyroTxt) && (accelX.text != accelTxt) }
     }

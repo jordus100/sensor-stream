@@ -16,6 +16,7 @@ android {
         versionName "1.0"
         buildConfigField("String","WEBSOCKET_SERVER", websocket_server)
         buildConfigField("Integer","WEBSOCKET_SERVER_PORT", websocket_server_port)
+        buildConfigField("String","WEBSOCKET_PATH", websocket_path)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -72,6 +73,8 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.0'
     implementation 'org.testng:testng:7.6.1'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation "io.ktor:ktor-client-android:$ktor_version"
+    implementation 'javax.vecmath:vecmath:1.5.2'
 }
 repositories {
     mavenCentral()

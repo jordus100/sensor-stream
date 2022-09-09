@@ -7,14 +7,14 @@
         </classes>
     </test>
     <test name="Smartdust device">
-        <parameter name="deviceUID" value="public.smartdust.me:13970" />
+        <parameter name="deviceUID" value="public.smartdust.me:13685" />
         <parameter name="systemPort" value="8202" />
         <classes>
             <class name="com.example.test.AppiumSensorsReadoutsActivityTests" />
         </classes>
     </test>
     <test name="Smartdust device #2">
-        <parameter name="deviceUID" value="public.smartdust.me:11981" />
+        <parameter name="deviceUID" value="public.smartdust.me:13699" />
         <parameter name="systemPort" value="8203" />
         <classes>
             <class name="com.example.test.AppiumSensorsReadoutsActivityTests" />

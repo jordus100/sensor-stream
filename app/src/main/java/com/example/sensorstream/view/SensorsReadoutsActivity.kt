@@ -12,6 +12,7 @@ import com.example.sensorstream.viewmodel.SensorsReadoutsViewModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.component.KoinComponent
@@ -41,7 +42,7 @@ class SensorsReadoutsActivity : AppCompatActivity(), KoinComponent {
         val uiEventsFlow = _uiEventsFlow.asSharedFlow()
         sensorsViewModel.consumeUiEvents(uiEventsFlow)
         lifecycleScope.launch {
-            sensorsViewModel.state.collect {
+            sensorsViewModel.state.sample(500L).collect {
                 updateSensorsUI(it.sensorsData)
                 updateConnectionStatusUI(it.connectionStatus)
                 updateTransmissionStateStatusUI(it.transmissionState)
