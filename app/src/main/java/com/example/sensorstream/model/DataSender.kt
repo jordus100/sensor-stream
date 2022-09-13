@@ -81,7 +81,7 @@ class SocketDataSender (formatSensorData : (SensorsData) -> String,
     @OptIn(FlowPreview::class)
     fun CoroutineScope.sendData() {
         launch {
-            sensorDataFlowTransformed.sample(1L)
+            sensorDataFlowTransformed.sample(400L)
             .filter{ transmissionActive }
             .collect {
                 yield()
@@ -109,7 +109,6 @@ class SocketDataSender (formatSensorData : (SensorsData) -> String,
                 val incomingTxt = incoming.await().readText()
                 if(incomingTxt != pingMessage) {
                     _receivedFlow.emit(incomingTxt)
-                    println(incomingTxt)
                 }
             }
         }

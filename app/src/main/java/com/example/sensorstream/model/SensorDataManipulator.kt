@@ -2,16 +2,13 @@ package com.example.sensorstream.model
 
 import android.hardware.SensorManager
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import java.lang.Math.abs
 import java.time.Duration
-import java.time.LocalDateTime
 import java.util.*
 import javax.vecmath.Vector3d
-import kotlin.collections.ArrayList
 
 operator fun Vector3d.times(other : Double) : Vector3d{
     var copy = Vector3d(this.x, this.y, this.z)
@@ -28,10 +25,11 @@ class SensorDataManipulator(private val sensorDataFlow : StateFlow<SensorsViewSt
                             scope: CoroutineScope) {
     private var rotationQArr = floatArrayOf(0.0f, 0.0f, 0.0f, 0.0f)
     private var referenceQArr = floatArrayOf(0.0f, 0.0f, 0.0f, 0.0f)
+    private var positionVec = Vector3d()
     private var position = Vector3d()
     private var speed = Vector3d()
-    private val alpha = 0.1
-    private val meanDepth = 30
+    private val meanDepth = 10
+    private var accelFiltered = Vector3d()
 
     init{
         scope.launch {
@@ -48,66 +46,67 @@ class SensorDataManipulator(private val sensorDataFlow : StateFlow<SensorsViewSt
             floatArrayOf(it.referencePoint.x, it.referencePoint.y , it.referencePoint.z))
 
         "" + rotationQArr[1] + " " + rotationQArr[2] + " " + rotationQArr[3] + " " +
-            rotationQArr[0] + " ; " + referenceQArr[1] + " " + referenceQArr[2] + " " +
-            referenceQArr[3] + " " + referenceQArr[0] + " ; " + it.accel.x + " " + it.accel.y +
-            " " + it.accel.z + " ; " + it.accelRefPoint.x + " " + it.accelRefPoint.y + " " +
-            it.accelRefPoint.z + " ; " + it.timestamp
+        rotationQArr[0] + " ; " + referenceQArr[1] + " " + referenceQArr[2] + " " +
+        referenceQArr[3] + " " + referenceQArr[0] + " ; " + it.accel.x + " " + it.accel.y +
+        " " + it.accel.z + " ; " + accelFiltered.x + " " + accelFiltered.y + " " + + accelFiltered.z +
+        " ; " + speed.x + " " + speed.y + " " + speed.z + " ; " + positionVec.x + " " +
+        positionVec.y + " " + positionVec.z
     }
     private suspend fun calcPosition(tendency : Vector3d) {
         var delta: Double
-        var prevDelta = 0.0
         var prevTimestamp = 0L
         var lastReadings = ArrayDeque<Vector3d>()
         sensorDataFlow.collect {
             if (it.sensorsData.timestamp != 0L && prevTimestamp != 0L
                 && it.sensorsData.timestamp != prevTimestamp) {
-                var accel = Vector3d(it.sensorsData.accel.x.toDouble(),
+                accelFiltered = Vector3d(it.sensorsData.accel.x.toDouble(),
                     it.sensorsData.accel.y.toDouble(), it.sensorsData.accel.z.toDouble())
-                lastReadings.add(accel)
                 delta = (it.sensorsData.timestamp - prevTimestamp) / 1000000000.toDouble()
+                lastReadings.add(accelFiltered)
+                accelFiltered = calcVectorMean(lastReadings)
                 if(lastReadings.size >= meanDepth)
-                else{
+                {
                     var sign: Double
-                    accel = calcVectorMean(lastReadings)
-                    if(abs(accel.x) <= tendency.x) {
-                        accel.x = 0.0
-                        speed.x = 0.0
+                    if(abs(accelFiltered.x) <= tendency.x) {
+                        println("ZEROING")
+                        accelFiltered.x *= 0.9
+                        speed.x *= 0.95
                     }
                     else{
-                        if(accel.x < 0)
+                        if(accelFiltered.x < 0)
                             sign = 1.0
                         else sign = -1.0
-                        accel.x += tendency.x * sign
+                        accelFiltered.x += tendency.x * sign
                         //speed.x += tendency.x * -1 * delta
                     }
-                    if(abs(accel.y) <= tendency.y) {
-                        accel.y = 0.0
+                    if(abs(accelFiltered.y) <= tendency.y) {
+                        accelFiltered.y = 0.0
                         speed.y = 0.0
                     }
                     else{
-                        if(accel.y < 0)
+                        if(accelFiltered.y < 0)
                             sign = 1.0
                         else sign = -1.0
-                        accel.y += tendency.y * sign
+                        accelFiltered.y += tendency.y * sign
                         //speed.y += tendency.y * -1 * delta
                     }
-                    if(abs(accel.z) <= tendency.z) {
-                        accel.z = 0.0
+                    if(abs(accelFiltered.z) <= tendency.z) {
+                        accelFiltered.z = 0.0
                         speed.z = 0.0
                     }
                     else{
-                        if(accel.z < 0)
+                        if(accelFiltered.z < 0)
                         sign = 1.0
                         else sign = -1.0
-                        accel.z += tendency.z * sign
+                        accelFiltered.z += tendency.z * sign
                         //speed.z += tendency.z * -1 * delta
                     }
-                    position += (speed * delta) + (accel * 0.5 * (delta * delta))
-                    speed += accel * delta
+                    position += (speed * delta) + (accelFiltered * 0.5 * (delta * delta))
+                    positionVec = position
+                    speed += accelFiltered * delta
                     prevTimestamp = it.sensorsData.timestamp
                     //println(position)
                     lastReadings.removeLast()
-                    prevDelta = delta
                 }
             } else if (it.sensorsData.timestamp != 0L)
                 prevTimestamp = it.sensorsData.timestamp
