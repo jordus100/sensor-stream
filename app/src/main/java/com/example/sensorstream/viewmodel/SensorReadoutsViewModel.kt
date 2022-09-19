@@ -31,7 +31,6 @@ class SensorsReadoutsViewModel (private val sensorManager: SensorManager)
         parametersOf(sensorManager, state, viewModelScope,
             { sensorData : SensorsData ->
                 _state.update {
-                    println(sensorData.referencePoint.x)
                     it.copy(sensorsData = sensorData) } } ) }
     private val sensorDataManipulator : SensorDataManipulator = get {
         parametersOf(state, viewModelScope)

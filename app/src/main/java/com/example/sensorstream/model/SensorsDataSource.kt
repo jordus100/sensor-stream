@@ -21,10 +21,10 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
     private var accelVector: Sensor? = null
 
     init {
-        accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+        accelVector = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
-        accelVector = sensorManager.getDefaultSensor(Sensor.TYPE_POSE_6DOF)
+        accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         sensorManager.registerListener(this, gyroSensor, SENSOR_DELAY)
         sensorManager.registerListener(this, accelSensor, SENSOR_DELAY)
         sensorManager.registerListener(this, rotationVector, SENSOR_DELAY)
@@ -50,7 +50,7 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
         if (event?.values == null) return
 
         when(event.sensor?.type){
-            Sensor.TYPE_LINEAR_ACCELERATION ->
+            Sensor.TYPE_ACCELEROMETER ->
                 sensorDataUpdate(state.value.sensorsData.copy(accel = Point3F.from(event.values),
                     timestamp = event.timestamp))
             Sensor.TYPE_GYROSCOPE ->
@@ -58,7 +58,7 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
             Sensor.TYPE_GAME_ROTATION_VECTOR ->
                 sensorDataUpdate(state.value.sensorsData.copy(
                     rotationVector = Point3F.from(event.values)))
-            Sensor.TYPE_POSE_6DOF ->
+            Sensor.TYPE_LINEAR_ACCELERATION ->
                 sensorDataUpdate(state.value.sensorsData.copy(
                     accelerationVector = Point3F.from(
                         floatArrayOf(event.values[0], event.values[1], event.values[2]))))
@@ -68,6 +68,8 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-        return
+        if(p0?.type == Sensor.TYPE_ACCELEROMETER)
+            println("accuracy: $p1")
     }
+
 }
