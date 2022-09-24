@@ -21,7 +21,7 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
     private var accelVector: Sensor? = null
 
     init {
-        accelVector = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+        accelVector = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
         accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -50,7 +50,7 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
         if (event?.values == null) return
 
         when(event.sensor?.type){
-            Sensor.TYPE_ACCELEROMETER ->
+            Sensor.TYPE_ACCELEROMETER->
                 sensorDataUpdate(state.value.sensorsData.copy(accel = Point3F.from(event.values),
                     timestamp = event.timestamp))
             Sensor.TYPE_GYROSCOPE ->
@@ -58,7 +58,7 @@ class SensorsDataSource(sensorManager: SensorManager, private val state: StateFl
             Sensor.TYPE_GAME_ROTATION_VECTOR ->
                 sensorDataUpdate(state.value.sensorsData.copy(
                     rotationVector = Point3F.from(event.values)))
-            Sensor.TYPE_LINEAR_ACCELERATION ->
+            Sensor.TYPE_GRAVITY ->
                 sensorDataUpdate(state.value.sensorsData.copy(
                     accelerationVector = Point3F.from(
                         floatArrayOf(event.values[0], event.values[1], event.values[2]))))
