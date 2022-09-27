@@ -25,6 +25,7 @@ val appModule = module {
     }
     single<SensorsDataSource> { params -> SensorsDataSource(
         params.get(0), params.get(1), params.get(2), params.get(3)) }
+    single<PositionCalculator>{ params -> PositionCalculator(params.get(0), params.get(1))}
     single<SensorDataManipulator> { params -> SensorDataManipulator(params.get(0), params.get(1)) }
     single<SensorDataSender> { params -> SocketDataSender(
         params.get(0), params.get(1), params.get(2), params.get(3), params.get(4)) }
