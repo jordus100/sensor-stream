@@ -67,11 +67,12 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
     val accelFiltered
         get() = _accelFiltered
     private var accel = Vector3d()
+    private var accelRaw = Vector3d()
     private var velocityAdd = Vector3d()
     private var velocitySum = Vector3d()
     private val meanDepth = 2
-    private val stationaryDetectionSensitivity = 100
-    private val overshootFactor = 0.3
+    private val stationaryDetectionSensitivity = 50
+    private val overshootFactor = 0.45
     private val calibrationWindow = 0.05
     private val calibrationDuration = Duration.ofSeconds(1)
     private var timestamp = 0L
@@ -92,6 +93,7 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
     )
     private var noiseCalibrationResult = CalibrationData()
     private val calibrationFlow = MutableStateFlow(SensorsData())
+    private val highPassThreshold = 0.05
 
     init{
         scope.launch {
@@ -99,14 +101,11 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
                 accel = Point3F(it.sensorsData.accel.x - it.sensorsData.accelerationVector.x,
                     it.sensorsData.accel.y - it.sensorsData.accelerationVector.y,
                     it.sensorsData.accel.z - it.sensorsData.accelerationVector.z)))*/
-            val startTimeMillis = System.currentTimeMillis()
-            val duration = Duration.ofSeconds(7)
             val dataFlow = sensorDataFlow.transform {
                 emit(it.sensorsData)
             }.stateIn(this)
-            val result = calcNoiseComponents(dataFlow) {
-                System.currentTimeMillis() - startTimeMillis <= duration.toMillis() }
-            println(result.meanNoise)
+            noiseCalibrationResult = calcNoiseComponents(dataFlow, Duration.ofSeconds(7))
+            println(noiseCalibrationResult.rotationVec)
             calcPosition()
         }
     }
@@ -115,16 +114,19 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
         sensorDataFlow.collect {
             if (it.sensorsData.timestamp != 0L && prevTimestamp != 0L
                 && it.sensorsData.timestamp != prevTimestamp) {
-                accel = Vector3d(it.sensorsData.accel.x.toDouble(),
+                accelRaw = Vector3d(it.sensorsData.accel.x.toDouble(),
                     it.sensorsData.accel.y.toDouble(), it.sensorsData.accel.z.toDouble())
                 val rotationVec = Vector3d(it.sensorsData.rotationVector.x.toDouble(),
                     it.sensorsData.rotationVector.y.toDouble(), it.sensorsData.rotationVector.z.toDouble())
-                accel = eliminateGravity(accel, rotationVec)
-                println("accel: " + accel.toString())
+                accel = accelRaw
+//                    eliminateGravity(accelRaw, rotationVec)
                 lastReadings.add(accel)
                 if(lastReadings.size >= meanDepth) {
                     delta = (it.sensorsData.timestamp - prevTimestamp) / 1000000000.toDouble()
                     filterAccelData()
+                    updateCalibrationFlow()
+                    detectStationary()
+                    highPassFilter()
                     handleCalibration()
                     val calcResult = calculateData()
                     velocityAdd = calcResult.first
@@ -152,6 +154,12 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
                 noiseCalibrationResult.rotationVec.z.toFloat()))
         val rotationQ = Quat4d(rotationQArr.map{ it.toDouble() }.toDoubleArray())
         val calibratedRotationQ = Quat4d(calibratedRotationQArr.map{ it.toDouble() }.toDoubleArray())
+        val identityQ = Quat4d(0.0, 0.0, 0.0, 1.0)
+        val calibRotationQCopy = Quat4d(calibratedRotationQ)
+        calibRotationQCopy.mulInverse(identityQ)
+        calibRotationQCopy.inverse()
+        calibratedRotationQ.mul(calibRotationQCopy)
+        rotationQ.mul(calibRotationQCopy)
         rotationQ.mulInverse(calibratedRotationQ)
         val rotationDiffQ = rotationQ
         rotationDiffQ.inverse()
@@ -159,6 +167,7 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
         val rotationDiffQCopy = Quat4d(rotationDiffQ)
         rotationDiffQ.mul(accelQ)
         rotationDiffQ.mulInverse(rotationDiffQCopy)
+        println(rotationDiffQ.x - accel.x)
         return Vector3d(rotationDiffQ.x, rotationDiffQ.y, rotationDiffQ.z)
     }
 
@@ -170,22 +179,18 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
         return Pair(velocityAdd, velocitySum)
     }
 
-    private fun handleCalibration()
-            : CalibrationData {
+    private fun handleCalibration() {
         CoroutineScope(Dispatchers.Main).launch {
             val result =
                 calibrate()
             if (result.meanNoise.x != 0.0)
                 noiseCalibrationResult = result
         }
-        return noiseCalibrationResult
     }
 
     private fun filterAccelData() {
         _accelFiltered = calcVectorMean(lastReadings)
         _accelFiltered = eliminateNoiseWindow(_accelFiltered)
-        updateCalibrationFlow()
-        detectStationary()
     }
 
     private fun eliminateNoiseWindow(accel : Vector3d) : Vector3d{
@@ -217,8 +222,8 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
             }
         }
         if(count == 3){
-            calibrationFlow.update{ it.copy(accel = Point3F(accel.x.toFloat(),
-                accel.y.toFloat(), accel.z.toFloat())) }
+            calibrationFlow.update{ it.copy(accel = Point3F(accelRaw.x.toFloat(),
+                accelRaw.y.toFloat(), accelRaw.z.toFloat())) }
         }
     }
 
@@ -232,10 +237,7 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
             if(stationaryReadingsCount[0].get() == calibrationStartThreshold
                 || stationaryReadingsCount[1].get() == calibrationStartThreshold
                 || stationaryReadingsCount[2].get() == calibrationStartThreshold) {
-                val startTimeMillis = System.currentTimeMillis()
-                calibrationResult = calcNoiseComponents(calibrationFlow) {
-                    System.currentTimeMillis() - startTimeMillis <= calibrationDuration.toMillis()
-                }
+                calibrationResult = calcNoiseComponents(calibrationFlow, calibrationDuration)
             }
         return calibrationResult
     }
@@ -254,6 +256,15 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
                 motionPhases[i] = MotionPhase.STILL
                 accelVelSum[i] = 0.0
                 overshootVelSum[i] = 0.0
+            }
+        }
+    }
+
+    private fun highPassFilter(){
+        for(i in 0..2){
+            if(abs((lastReadings.toArray()[lastReadings.size - 2] as Vector3d)[i] -
+                (lastReadings.toArray()[lastReadings.size - 2] as Vector3d)[i]) < highPassThreshold){
+                _accelFiltered[i] = 0.0
             }
         }
     }
@@ -376,28 +387,40 @@ class PositionCalculator(private val sensorDataFlow : StateFlow<SensorsViewState
     }
 
     private suspend fun calcNoiseComponents(dataFlow : StateFlow<SensorsData>,
-                                            whileCondition : () -> Boolean) : CalibrationData {
+                                            duration: Duration) : CalibrationData {
         val maxVec = Vector3d(Double.MIN_VALUE, Double.MIN_VALUE, Double.MIN_VALUE)
         val minVec = Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE)
         val meanVec : Vector3d
-        val meanRotation : Vector3d
+        var meanRotation : Vector3d
         val vectors = ArrayDeque<Vector3d>()
         val rotations = ArrayDeque<Vector3d>()
-        if(whileCondition())
-            dataFlow.takeWhile{ whileCondition() }.collect {
-                for(i in 0..2){
-                    if(it.accel[i] > maxVec[i])
-                        maxVec[i] = it.accel[i].toDouble()
-                    if(it.accel[i] < minVec[i])
-                        minVec[i] = it.accel[i].toDouble()
-                }
-                vectors.add(Vector3d(it.accel.x.toDouble(), it.accel.y.toDouble(),
-                    it.accel.z.toDouble()))
-                vectors.add(Vector3d(it.rotationVector.x.toDouble(), it.rotationVector.y.toDouble(),
-                    it.rotationVector.z.toDouble()))
+        var startTimeMillis = System.currentTimeMillis()
+        val gravCalibDuration = Duration.ofMillis(duration.toMillis() / 4)
+        val accelCalibDuration = Duration.ofMillis(gravCalibDuration.toMillis() * 3)
+        dataFlow.takeWhile { System.currentTimeMillis() - startTimeMillis <= gravCalibDuration.toMillis() }
+            .collect {
+                val rotation = Vector3d(it.rotationVector.x.toDouble(),
+                    it.rotationVector.y.toDouble(), it.rotationVector.z.toDouble())
+                rotations.add(rotation)
             }
-        meanVec = calcVectorMean(vectors)
         meanRotation = calcVectorMean(rotations)
+        noiseCalibrationResult = noiseCalibrationResult.copy(rotationVec = meanRotation)
+        dataFlow.takeWhile{ System.currentTimeMillis() - startTimeMillis <= accelCalibDuration.toMillis() }
+            .collect {
+            val accel = Vector3d(it.accel.x.toDouble(), it.accel.y.toDouble(),
+                it.accel.z.toDouble())
+                /*eliminateGravity(Vector3d(it.accel.x.toDouble(), it.accel.y.toDouble(),
+                it.accel.z.toDouble()), Vector3d(it.rotationVector.x.toDouble(),
+                it.rotationVector.y.toDouble(), it.rotationVector.z.toDouble()))*/
+            for(i in 0..2){
+                if(accel[i] > maxVec[i])
+                    maxVec[i] = accel[i]
+                if(accel[i] < minVec[i])
+                    minVec[i] = accel[i]
+            }
+            vectors.add(accel)
+        }
+        meanVec = calcVectorMean(vectors)
         return CalibrationData(maxVec, minVec, meanVec, meanRotation)
     }
 

@@ -80,7 +80,7 @@ class SocketDataSender (formatSensorData : (SensorsData) -> String,
     @OptIn(FlowPreview::class)
     fun CoroutineScope.sendData() {
         launch {
-            sensorDataFlowTransformed.sample(400L)
+            sensorDataFlowTransformed.sample(200L)
             .filter{ transmissionActive }
             .collect {
                 yield()

@@ -37,7 +37,4 @@ class SensorDataManipulator(private val sensorDataFlow : StateFlow<SensorsViewSt
         positionCalculator.velocity.z + " ; " + positionCalculator.position.x + " " +
         positionCalculator.position.y + " " + positionCalculator.position.z
     }
-
-
-
 }
